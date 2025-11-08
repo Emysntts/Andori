@@ -1,26 +1,31 @@
 Andori — Frontend
 
-Stack alvo: Next.js (app router) + React + TypeScript + Tailwind + shadcn/ui.
+Stack: Next.js (App Router) + React + TypeScript + Tailwind.
 
-Estrutura de diretórios proposta:
+Estrutura (essencial):
 
-- app/                     → rotas do Next.js (server/client components)
-- components/
-  - ui/                    → componentes base (shadcn/ui personalizados)
-  - common/                → componentes compartilhados
-- features/
-  - student-profile/       → telas e lógica de perfis de estudantes
-  - lesson-generation/     → telas e lógica de geração de materiais
-  - classroom/             → telas de turmas/aulas
-- lib/                     → utilitários (fetchers, formatadores, config)
-- hooks/                   → hooks reutilizáveis
-- contexts/                → contextos globais
-- styles/                  → estilos globais/tokens
-- public/                  → assets estáticos
-- tests/                   → testes
+- app/                     → rotas e páginas
+- components/              → componentes compartilhados (Tabs, Cards)
+- app/aluno/[id]/          → página de perfil do aluno
+- app/aulas/               → página de aulas
+- app/globals.css          → Tailwind base
+- tailwind.config.ts / postcss.config.js / tsconfig.json
 
-Observações
-- Sem código neste momento: apenas organização para acelerar o MVP.
-- Integração com backend via API REST (FastAPI).
+Como rodar
+1) Instale as dependências:
+   npm install
+2) Ambiente:
+   - Opcional: crie frontend/.env.local, se necessário.
+3) Dev:
+   npm run dev
+
+Páginas implementadas (MVP visual)
+- /           → turmas com cartões de alunos
+- /aulas      → calendário (placeholder) e lista de aulas, botão “add aula”
+- /aluno/:id  → perfil do aluno com desempenho e lista de aulas/relatórios
+
+Notas
+- UI simples e sem emoji, inspirada nos wireframes.
+- Dados mock in-memory; substitua por chamadas ao backend quando pronto.
 
 

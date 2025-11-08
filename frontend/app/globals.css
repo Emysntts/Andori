@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Layout base */
+body {
+  @apply bg-neutral-50 text-neutral-900;
+}
+
+.container-page {
+  @apply max-w-6xl mx-auto px-4;
+}
+
+.card {
+  @apply bg-white border border-neutral-200 rounded-xl shadow-sm;
+}
+
+.tab {
+  @apply px-4 py-2 rounded-lg border border-neutral-300 bg-white text-neutral-700;
+}
+
+.tab-active {
+  @apply border-brand-400 bg-brand-50 text-neutral-900;
+}
+
