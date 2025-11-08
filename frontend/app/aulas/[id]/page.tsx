@@ -1,11 +1,12 @@
 'use client'
 
 import Tabs from '@components/Tabs'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, useParams } from 'next/navigation'
 
 export default function AulaDetalhePage() {
   const router = useRouter()
   const params = useSearchParams()
+  const route = useParams<{ id: string }>()
 
   const assunto = params.get('assunto') || 'Tema da aula'
   const descricao = params.get('descricao') || 'descrição'
@@ -57,7 +58,8 @@ export default function AulaDetalhePage() {
               className="px-4 py-2 rounded-lg border border-emerald-600 text-emerald-700 hover:bg-emerald-50"
               onClick={() => {
                 const search = params.toString()
-                router.push(`./gerando?${search}`)
+                const id = route?.id
+                router.push(`/aulas/${id}/gerando?${search}`)
               }}
             >
               criar material

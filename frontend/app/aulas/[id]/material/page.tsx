@@ -1,9 +1,24 @@
 'use client'
 
 import Tabs from '@components/Tabs'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useMemo, useState } from 'react'
-import { generateLessonMaterial } from '@features/lesson-generation/agent'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import { generateLessonMaterial, LessonMaterial } from '@features/lesson-generation/agent'
+
+function toText(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) return value.map((v) => toText(v)).join('\n')
+  if (value && typeof value === 'object') {
+    try {
+      return Object.entries(value as Record<string, unknown>)
+        .map(([k, v]) => `${k.split('_').join(' ')}: ${toText(v)}`)
+        .join('\n')
+    } catch {
+      return JSON.stringify(value)
+    }
+  }
+  return String(value ?? '')
+}
 
 function FeedbackModal({
   open,
@@ -56,7 +71,9 @@ function FeedbackModal({
 export default function MaterialGeradoPage() {
   const router = useRouter()
   const params = useSearchParams()
+  const route = useParams<{ id: string }>()
   const [openFeedback, setOpenFeedback] = useState(false)
+  const [materialFromAgent, setMaterialFromAgent] = useState<LessonMaterial | null>(null)
 
   const assunto = params.get('assunto') || 'Material tema aula'
   const descricao = params.get('descricao') || ''
@@ -64,10 +81,43 @@ export default function MaterialGeradoPage() {
   const data = params.get('data') || ''
   const feedback = params.get('feedback') || undefined
 
-  const material = useMemo(
+  const fallbackMaterial = useMemo(
     () => generateLessonMaterial({ assunto, descricao, turma, data, feedback }),
     [assunto, descricao, turma, data, feedback]
   )
+
+  useEffect(() => {
+    const id = route?.id
+    if (!id) return
+    const raw = sessionStorage.getItem(`material:${id}`)
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw)
+        const normalized: LessonMaterial = {
+          ...parsed,
+          recomendacoes: toText(parsed?.recomendacoes),
+          roteiro: toText(parsed?.roteiro),
+          resumo: toText(parsed?.resumo)
+        }
+        setMaterialFromAgent(normalized)
+      } catch {
+        setMaterialFromAgent(null)
+      }
+    }
+  }, [route])
+
+  const material = materialFromAgent ?? fallbackMaterial
+
+  function List({ items }: { items: string[] | undefined | null }) {
+    if (!items || items.length === 0) return null
+    return (
+      <ul className="list-disc pl-6 space-y-1 text-neutral-800">
+        {items.map((it, idx) => (
+          <li key={idx}>{it}</li>
+        ))}
+      </ul>
+    )
+  }
 
   return (
     <div>
@@ -90,6 +140,18 @@ export default function MaterialGeradoPage() {
             {material.roteiro}
           </div>
           <div className="card p-5 bg-neutral-50">{material.resumo}</div>
+          {material.exemplos && (
+            <div className="card p-5 bg-neutral-50">
+              <div className="font-medium mb-2">Exemplos prontos para usar em aula</div>
+              <List items={material.exemplos} />
+            </div>
+          )}
+          {material.perguntas && (
+            <div className="card p-5 bg-neutral-50">
+              <div className="font-medium mb-2">Perguntas para checagem</div>
+              <List items={material.perguntas} />
+            </div>
+          )}
         </section>
 
         <div className="flex items-center justify-end gap-3">
