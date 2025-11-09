@@ -2,24 +2,20 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 
-class Persona(BaseModel):
-    label: str
-    description: str
-    hyperfocus: str
-    supports: List[str]
-
-
 class GenerateMaterialRequest(BaseModel):
     assunto: str
+    disciplina: Optional[str] = None
     descricao: str = ""
     turma: str = ""
     data: str = ""
     feedback: Optional[str] = None
     hyperfocus: Optional[str] = None
+    aluno_id: Optional[str] = None
+    turma_id: Optional[str] = None
+    arquivo_b64: Optional[str] = None
 
 
 class Material(BaseModel):
-    persona: Persona
     recomendacoes: str
     roteiro: str
     resumo: str
