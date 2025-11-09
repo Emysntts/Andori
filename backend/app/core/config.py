@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        extra = "ignore"  # Ignora campos extras do .env
 
 
 settings = Settings()

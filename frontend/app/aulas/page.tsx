@@ -1,11 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import Tabs from '@components/Tabs'
 import { useRouter } from 'next/navigation'
 import Calendar from '@components/Calendar'
-
-type Aula = { id: string; titulo: string; data: string }
+import { aulasAPI, type Aula, type AulaCreatePayload } from '@lib/api'
 
 type AulaFormState = {
   assunto: string
@@ -160,18 +159,157 @@ export default function AulasPage() {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [aulas, setAulas] = useState<Aula[]>([
-    { id: 'a1', titulo: 'Aula de Capitalismo', data: '17/06' },
-    { id: 'a2', titulo: 'Aula de História do Brasil', data: '20/06' }
-  ])
+  const [aulas, setAulas] = useState<Aula[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const toastTimeout = useRef<NodeJS.Timeout | null>(null)
 
-  const nextId = useMemo(
-    () => `a${(aulas.length + 1).toString()}`,
-    [aulas.length]
-  )
+  function normalizeAula(raw: any, fallback?: AulaFormState): Aula {
+    const id = raw?.id ?? (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Date.now()))
+    const assunto = raw?.assunto ?? raw?.titulo ?? fallback?.assunto ?? 'Aula sem título'
+    const turma = raw?.turma ?? raw?.turma_nome ?? fallback?.turma ?? 'Turma não informada'
+    const data = raw?.data ?? fallback?.data ?? ''
+    const descricao = raw?.descricao ?? fallback?.descricao ?? ''
+
+    let titulo = raw?.titulo
+    if (!titulo) {
+      titulo = assunto || 'Aula sem título'
+    }
+
+    return {
+      id,
+      titulo,
+      assunto,
+      turma,
+      data,
+      descricao
+    }
+  }
+
+  function formatDateLabel(value: string): string {
+    if (!value) return 'Data não informada'
+
+    const isoMatch = /^\d{4}-\d{2}-\d{2}/.test(value)
+    const slashMatch = /^\d{2}\/\d{2}(\/\d{2,4})?$/.test(value)
+
+    let parsed: Date | null = null
+
+    if (isoMatch) {
+      parsed = new Date(value)
+    } else if (slashMatch) {
+      const [dayStr, monthStr, yearStr] = value.split('/')
+      const day = Number(dayStr)
+      const month = Number(monthStr) - 1
+      const year = yearStr ? Number(yearStr.length === 2 ? `20${yearStr}` : yearStr) : new Date().getFullYear()
+      parsed = new Date(year, month, day)
+    } else {
+      const fallback = new Date(value)
+      parsed = Number.isNaN(fallback.getTime()) ? null : fallback
+    }
+
+    if (parsed && !Number.isNaN(parsed.getTime())) {
+      return parsed.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
+    }
+
+    return value
+  }
+
+  useEffect(() => {
+    loadAulas()
+    return () => {
+      if (toastTimeout.current) clearTimeout(toastTimeout.current)
+    }
+  }, [])
+
+  function showToast(type: 'success' | 'error', message: string) {
+    if (toastTimeout.current) clearTimeout(toastTimeout.current)
+    setToast({ type, message })
+    toastTimeout.current = setTimeout(() => {
+      setToast(null)
+      toastTimeout.current = null
+    }, 4000)
+  }
+
+  async function loadAulas() {
+    try {
+      setLoading(true)
+      setError(null)
+      console.log('📡 Carregando aulas...')
+      const response = await aulasAPI.list()
+      console.log('✅ Aulas carregadas:', response)
+      const normalized = (response.items || []).map((item) => normalizeAula(item))
+      setAulas(normalized)
+    } catch (err: any) {
+      console.error('❌ Erro ao carregar aulas:', err)
+      const errorMessage = err?.message || 'Erro desconhecido'
+      if (errorMessage.includes('503')) {
+        const message = 'Banco de dados não configurado. Configure a conexão com o banco no backend.'
+        setError(message)
+        showToast('error', message)
+      } else if (errorMessage.includes('Failed to fetch')) {
+        const message = 'Não foi possível conectar ao backend. Verifique se o servidor está rodando na porta 8000.'
+        setError(message)
+        showToast('error', message)
+      } else {
+        const message = `Erro ao carregar aulas: ${errorMessage}`
+        setError(message)
+        showToast('error', message)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleCreateAula(formData: AulaFormState) {
+    try {
+      console.log('📝 Criando nova aula:', formData)
+      const response = await aulasAPI.create({
+        assunto: formData.assunto,
+        turma: formData.turma,
+        data: formData.data,
+        descricao: formData.descricao,
+        arquivo: formData.arquivo
+      })
+      console.log('✅ Aula criada:', response)
+      
+      // Adiciona a nova aula à lista
+      const novaAula = normalizeAula(response.aula, formData)
+      setAulas(prev => [...prev, novaAula])
+      setIsOpen(false)
+      showToast('success', 'Aula criada com sucesso!')
+    } catch (err: any) {
+      console.error('❌ Erro ao criar aula:', err)
+      const errorMessage = err?.message || 'Erro desconhecido'
+      if (errorMessage.includes('503')) {
+        showToast('error', 'Banco de dados não configurado. Configure a conexão com o banco no backend.')
+      } else if (errorMessage.includes('Failed to fetch')) {
+        showToast('error', 'Não foi possível conectar ao backend. Verifique se o servidor está rodando.')
+      } else {
+        showToast('error', `Erro ao criar aula: ${errorMessage}`)
+      }
+    }
+  }
 
   return (
     <div>
+      {toast && (
+        <div className="fixed top-6 right-6 z-50">
+          <div
+            className={`px-5 py-3 rounded-2xl border-2 shadow-lg transition-all ${
+              toast.type === 'success'
+                ? 'bg-[#E0F5EC] border-[#32D583] text-[#054F31]'
+                : 'bg-[#FEE4E2] border-[#FDA29B] text-[#7A271A]'
+            }`}
+          >
+            {toast.message}
+          </div>
+        </div>
+      )}
       <Tabs
         tabs={[
           { href: '/', label: 'turmas' },
@@ -188,22 +326,50 @@ export default function AulasPage() {
             + Adicionar Aula
           </button>
         </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 space-y-4">
-            <Calendar value={selectedDate} onChange={setSelectedDate} aulas={aulas} />
+
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-12 h-12 rounded-full border-4 border-[#6BAED6] border-t-transparent animate-spin" />
           </div>
-          
-          <div className="lg:col-span-2 space-y-4">
-            {aulas.map((a) => (
+        )}
+
+        {error && (
+          <div className="border-2 border-[#EFB4C8] rounded-3xl p-6 bg-transparent">
+            <p className="text-[#01162A] text-center">{error}</p>
+            <button
+              onClick={loadAulas}
+              className="mt-4 mx-auto block px-6 py-2 rounded-xl bg-[#6BAED6] text-white font-semibold hover:bg-[#3B82C8] transition-colors"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        )}
+        
+        {!loading && !error && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 space-y-4">
+              <Calendar value={selectedDate} onChange={setSelectedDate} aulas={aulas} />
+            </div>
+            
+            <div className="lg:col-span-2 space-y-4">
+              {aulas.length === 0 && (
+                <div className="border-2 border-[#C5C5C5] rounded-3xl p-8 bg-transparent text-center">
+                  <p className="text-[#01162A] text-lg">Nenhuma aula encontrada.</p>
+                </div>
+              )}
+              {aulas.map((a) => (
               <div 
                 key={a.id} 
                 className="border-2 border-[#6BAED6] rounded-3xl p-6 bg-transparent transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-xl text-[#01162A] mb-1">{a.titulo}</h3>
-                    <p className="text-[#01162A] text-sm">{a.data}</p>
+                        <h3 className="font-semibold text-xl text-[#01162A] mb-1">
+                          {a.titulo || 'Aula sem título'}
+                        </h3>
+                        <p className="text-[#01162A] text-sm">
+                          {formatDateLabel(a.data)}
+                        </p>
                   </div>
                   <button 
                     className="px-5 py-2.5 rounded-xl bg-[#6BAED6] text-white font-medium hover:bg-[#3B82C8] transition-colors"
@@ -213,35 +379,16 @@ export default function AulasPage() {
                   </button>
                 </div>
               </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       <CreateAulaModal
         open={isOpen}
         onClose={() => setIsOpen(false)}
-        onCreate={(payload) => {
-          const dataLabel = payload.data
-            ? new Date(payload.data).toLocaleDateString('pt-BR')
-            : ''
-          const newId = nextId
-          setAulas((prev) => [
-            {
-              id: newId,
-              titulo: payload.assunto || 'Nova aula',
-              data: dataLabel
-            },
-            ...prev
-          ])
-          const params = new URLSearchParams({
-            assunto: payload.assunto,
-            descricao: payload.descricao,
-            data: payload.data,
-            turma: payload.turma
-          })
-          router.push(`/aulas/${newId}?${params.toString()}`)
-        }}
+        onCreate={handleCreateAula}
       />
     </div>
   )

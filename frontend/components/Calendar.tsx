@@ -55,12 +55,31 @@ export default function Calendar({
   // Criar um Set de datas com aulas para busca rápida
   const aulaDates = useMemo(() => {
     const dates = new Set<string>()
-    aulas.forEach(aula => {
-      // Parse da data no formato DD/MM (assumindo ano atual)
-      const [day, month] = aula.data.split('/')
-      if (day && month) {
-        const year = new Date().getFullYear()
-        dates.add(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`)
+    aulas.forEach((aula) => {
+      if (!aula?.data) return
+
+      const raw = aula.data.trim()
+      let parsed: Date | null = null
+
+      if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+        // ISO 8601 (yyyy-mm-dd)
+        parsed = new Date(raw)
+      } else if (/^\d{2}\/\d{2}(\/\d{2,4})?$/.test(raw)) {
+        // Formato brasileiro dd/mm[/yyyy]
+        const [dayStr, monthStr, yearStr] = raw.split('/')
+        const day = Number(dayStr)
+        const month = Number(monthStr) - 1
+        const year = yearStr ? Number(yearStr.length === 2 ? `20${yearStr}` : yearStr) : new Date().getFullYear()
+        parsed = new Date(year, month, day)
+      } else {
+        // Tenta parsear com Date nativo
+        const fallback = new Date(raw)
+        parsed = Number.isNaN(fallback.getTime()) ? null : fallback
+      }
+
+      if (parsed && !Number.isNaN(parsed.getTime())) {
+        const key = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`
+        dates.add(key)
       }
     })
     return dates
