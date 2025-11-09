@@ -69,3 +69,59 @@ Simplificar a rotina docente e oferecer uma forma intuitiva, prática e humaniza
   - `backend/app/api/v1/` para rotas da API.
   - `frontend/app/` para rotas do Next.js.
   - `frontend/components/` para componentes reutilizáveis.
+
+## Como usar / Rodar o projeto (dev)
+
+1) Backend (FastAPI)
+- Pré-requisitos: Python 3.11+, `pip`, PostgreSQL (ex.: Supabase)
+- Passos:
+  ```bash
+  cd backend
+  python -m venv .venv
+  source .venv/bin/activate  # Windows: .venv\Scripts\activate
+  pip install -r requirements.txt
+  cp .env.example .env  # se existir; caso não, crie um .env com as variáveis abaixo
+  ```
+- `.env` mínimo (exemplo):
+  ```ini
+  APP_NAME=Andori API
+  # URL do banco (ex.: Supabase)
+  SQLALCHEMY_URL=postgresql+psycopg://usuario:senha@host:5432/banco
+  # CORS para o frontend local
+  CORS_ORIGINS=http://localhost:3000
+  # Chave para geração (se aplicável)
+  OPENAI_API_KEY=sk-...
+  ```
+- Subir servidor:
+  ```bash
+  uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+  ```
+- Documentação interativa: `http://localhost:8000/docs`
+
+2) Frontend (Next.js)
+- Pré-requisitos: Node 18+, npm (ou pnpm/yarn)
+- Passos:
+  ```bash
+  cd frontend
+  npm install
+  ```
+- Crie `.env.local`:
+  ```ini
+  NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+  ```
+- Rodar:
+  ```bash
+  npm run dev
+  ```
+- Acesse: `http://localhost:3000`
+
+3) Dicas
+- Se o frontend não encontrar a API, verifique `NEXT_PUBLIC_API_BASE_URL`.
+- Se endpoints que usam banco falharem, confirme `SQLALCHEMY_URL` e acesso ao PostgreSQL.
+
+
+## Colaboradores
+- Emyle Lucena — emylesantos.07@gmail.com
+- Clara Dantas — mariaclaradtorres@gmail.com
+- Beatriz Pessoa — beatrizamgpessoa@gmail.com
+
