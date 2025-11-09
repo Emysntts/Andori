@@ -3,7 +3,6 @@
 import Tabs from '@components/Tabs'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { generateLessonMaterial } from '@features/lesson-generation/agent'
 
 export default function GerandoMaterialPage() {
   const router = useRouter()
@@ -15,20 +14,20 @@ export default function GerandoMaterialPage() {
     const run = async () => {
       const id = route?.id
       
-      // Limpar TODOS os materiais relacionados antes de gerar novo
       if (id) {
         sessionStorage.removeItem(`material:${id}`)
-        // Não limpar o accepted aqui, pois pode estar editando
       }
       
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || ''
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
       const payload = {
         assunto: params.get('assunto') || '',
         descricao: params.get('descricao') || '',
         turma: params.get('turma') || '',
         data: params.get('data') || '',
         feedback: params.get('feedback') || undefined,
-        hyperfocus: 'Minecraft'
+        hyperfocus: params.get('hyperfocus') || undefined,
+        aluno_id: params.get('aluno_id') || undefined,
+        turma_id: params.get('turma_id') || undefined
       }
       try {
         let material: any = null
@@ -40,29 +39,17 @@ export default function GerandoMaterialPage() {
             body: JSON.stringify(payload)
           })
           if (resp.ok) {
-            const json = await resp.json()
-            material = json?.material
-          }
-        }
-        if (!material) material = generateLessonMaterial(payload)
-        // Normalize fields to strings in case the model returns structured objects
-        const toText = (v: unknown): string => {
-          if (typeof v === 'string') return v
-          if (Array.isArray(v)) return v.map((x) => toText(x)).join('\n')
-          if (v && typeof v === 'object') {
-            try {
-              return Object.entries(v as Record<string, unknown>)
-                .map(([k, val]) => `${k.split('_').join(' ')}: ${toText(val)}`)
-                .join('\n')
-            } catch {
-              return JSON.stringify(v)
+            const json = await resp.json() 
+            material = json
+          } else {
+            setError('Falha ao gerar material')
+            return
             }
           }
-          return String(v ?? '')
+        if (!material) {
+          setError('Falha ao gerar material')
+          return
         }
-        material.recomendacoes = toText(material.recomendacoes)
-        material.roteiro = toText(material.roteiro)
-        material.resumo = toText(material.resumo)
         if (id) {
           sessionStorage.setItem(`material:${id}`, JSON.stringify(material))
           router.replace(`/aulas/${id}/material`)
@@ -70,14 +57,8 @@ export default function GerandoMaterialPage() {
           router.replace('./material')
         }
       } catch (e) {
-        const id = route?.id
-        const material = generateLessonMaterial(payload)
-        if (id) {
-          sessionStorage.setItem(`material:${id}`, JSON.stringify(material))
-          router.replace(`/aulas/${id}/material`)
-        } else {
-          router.replace('./material')
-        }
+        setError('Erro inesperado ao gerar material')
+        return
       }
     }
     run()
