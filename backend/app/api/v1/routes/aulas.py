@@ -66,9 +66,9 @@ def create_aula(payload: Dict[str, Any], db: Optional[Session] = Depends(get_db_
 
     insert_stmt = text(
         """
-        INSERT INTO public.arrmd (assunto, descricao, upload_arquivo)
-        VALUES (:assunto, :descricao, :upload_arquivo)
-        RETURNING id, assunto, descricao, upload_arquivo
+        INSERT INTO public.arrmd (assunto, descricao, data, upload_arquivo)
+        VALUES (:assunto, :descricao, CAST(:data AS DATE), :upload_arquivo)
+        RETURNING id, assunto, descricao, data, upload_arquivo
         """
     )
     try:
@@ -77,6 +77,7 @@ def create_aula(payload: Dict[str, Any], db: Optional[Session] = Depends(get_db_
             {
                 "assunto": payload.get("assunto"),
                 "descricao": payload.get("descricao"),
+                "data": payload.get("data"),
                 "upload_arquivo": json.dumps(metadata),
             },
         ).mappings().first()
@@ -100,7 +101,7 @@ def get_aula(aula_id: UUID, db: Optional[Session] = Depends(get_db_optional)) ->
     row = db.execute(
         text(
             """
-            SELECT id, assunto, descricao, upload_arquivo
+            SELECT id, assunto, descricao, data, upload_arquivo
             FROM public.arrmd
             WHERE id = :id
             """
@@ -129,7 +130,7 @@ def list_aulas(
     rows = db.execute(
         text(
             """
-            SELECT id, assunto, descricao, upload_arquivo
+            SELECT id, assunto, descricao, data, upload_arquivo
             FROM public.arrmd
             ORDER BY assunto
             LIMIT :limit OFFSET :offset
@@ -149,9 +150,10 @@ def update_aula(aula_id: UUID, payload: AulaUpdate, db: Session = Depends(get_db
         SET
             assunto = COALESCE(:assunto, assunto),
             descricao = COALESCE(:descricao, descricao),
+            data = COALESCE(CAST(:data AS DATE), data),
             upload_arquivo = COALESCE(:upload_arquivo, upload_arquivo)
         WHERE id = :id
-        RETURNING id, assunto, descricao, upload_arquivo
+        RETURNING id, assunto, descricao, data, upload_arquivo
         """
     )
     try:
@@ -161,6 +163,7 @@ def update_aula(aula_id: UUID, payload: AulaUpdate, db: Session = Depends(get_db
                 "id": str(aula_id),
                 "assunto": payload.assunto,
                 "descricao": payload.descricao,
+                "data": payload.data,
                 "upload_arquivo": payload.upload_arquivo,
             },
         ).mappings().first()
