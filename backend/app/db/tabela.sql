@@ -2,16 +2,16 @@ CREATE TABLE IF NOT EXISTS public.alunos (
   id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome                     TEXT NOT NULL,
   turma_id                 UUID NOT NULL REFERENCES public.turmas(id) ON DELETE CASCADE,
+  serie_escolar            TEXT NOT NULL, -- ex.: '6º ano', '7º ano', '8º ano'
   -- inputs 
-  interesse TEXT, 
-  preferencia TEXT, 
-  dificuldade TEXT,
-  laudo TEXT,
-  observacoes TEXT,
-  recomendacoes TEXT,
+  interesse TEXT, -- interesse do aluno
+  preferencia TEXT, -- preferencia do aluno
+  dificuldade TEXT, -- dificuldade do aluno
+  laudo TEXT, -- laudo do aluno
+  observacoes TEXT, -- observacoes do aluno
+  recomendacoes TEXT, -- recomendacoes do aluno
   nivel_de_suporte TEXT -- baixo, medio, alto
-
-  descricao_do_aluno TEXT -- pelo professor
+  descricao_do_aluno TEXT, -- pelo professor
 );
 
 -- 2.1 Turmas (depende de coordenadores)

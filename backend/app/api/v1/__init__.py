@@ -1,7 +1,9 @@
 from fastapi import APIRouter
 from .routes.material import router as material_router
+from .routes.estudantes import router as estudantes_router
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(material_router)
+api_router.include_router(estudantes_router)
 
 
