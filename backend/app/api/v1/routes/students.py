@@ -53,7 +53,6 @@ async def get_student_profile(aluno_id: str, db: Optional[Session] = Depends(get
                    a.dificuldade,
                    a.laudo,
                    a.observacoes,
-                   a.recomendacoes,
                    a.nivel_de_suporte,
                    a.descricao_do_aluno,
                    a.turma_id,

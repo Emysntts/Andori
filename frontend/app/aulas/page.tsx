@@ -1,14 +1,21 @@
 'use client'
 
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Tabs from '@components/Tabs'
 import { useRouter } from 'next/navigation'
 import Calendar from '@components/Calendar'
-import { aulasAPI, type Aula, type AulaCreatePayload } from '@lib/api'
+import {
+  aulasAPI,
+  turmasAPI,
+  type Aula,
+  type AulaCreatePayload,
+  type Turma
+} from '@lib/api'
 
 type AulaFormState = {
   assunto: string
   turma: string
+  turma_id?: string | null
   data: string
   descricao: string
   arquivo: File | null
@@ -17,19 +24,30 @@ type AulaFormState = {
 function CreateAulaModal({
   open,
   onClose,
-  onCreate
+  onCreate,
+  turmas,
+  loadingTurmas,
+  turmasError,
+  onRetryTurmas
 }: {
   open: boolean
   onClose: () => void
   onCreate: (payload: AulaFormState) => void
+  turmas: Turma[]
+  loadingTurmas: boolean
+  turmasError: string | null
+  onRetryTurmas: () => void
 }) {
   const [form, setForm] = useState<AulaFormState>({
     assunto: '',
     turma: '',
+    turma_id: null,
     data: '',
     descricao: '',
     arquivo: null
   })
+  const [formError, setFormError] = useState<string | null>(null)
+  const [isTurmaListOpen, setIsTurmaListOpen] = useState(false)
  
   if (!open) return null
 
@@ -53,8 +71,22 @@ function CreateAulaModal({
             className="p-8 space-y-5"
             onSubmit={(e) => {
               e.preventDefault()
+              if (!form.turma_id || !form.turma) {
+                setFormError('Selecione uma turma antes de criar a aula.')
+                return
+              }
+              setFormError(null)
               onCreate(form)
               onClose()
+              setForm({
+                assunto: '',
+                turma: '',
+                turma_id: null,
+                data: '',
+                descricao: '',
+                arquivo: null
+              })
+              setIsTurmaListOpen(false)
             }}
           >
             <div className="space-y-2">
@@ -77,16 +109,65 @@ function CreateAulaModal({
                 <label className="text-sm font-semibold text-[#01162A]">
                   Turma
                 </label>
-                <input
-                  type="text"
-                  placeholder="ex: 4º ano A"
-                  className="w-full rounded-xl border-2 border-[#C5C5C5] px-4 py-3 focus:outline-none focus:border-[#6BAED6] bg-transparent text-[#01162A] placeholder:text-[#C5C5C5]"
-                  value={form.turma}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, turma: e.target.value }))
-                  }
-                  required
-                />
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsTurmaListOpen((prev) => !prev)}
+                    className="w-full rounded-xl border-2 border-[#C5C5C5] px-4 py-3 text-left focus:outline-none focus:border-[#6BAED6] bg-transparent text-[#01162A] flex items-center justify-between"
+                  >
+                    <span>{form.turma || 'Selecione uma turma'}</span>
+                    <span className="ml-2 text-[#6BAED6]">
+                      {isTurmaListOpen ? '▲' : '▼'}
+                    </span>
+                  </button>
+                  {isTurmaListOpen && (
+                    <div className="absolute z-10 mt-2 w-full max-h-52 overflow-y-auto rounded-xl border-2 border-[#C5C5C5] bg-[#FFFEF1] shadow-lg">
+                      {loadingTurmas && (
+                        <div className="px-4 py-3 text-sm text-[#6BAED6]">
+                          Carregando turmas...
+                        </div>
+                      )}
+                      {turmasError && (
+                        <div className="px-4 py-3 text-sm text-[#7A271A] space-y-2">
+                          <p>{turmasError}</p>
+                          <button
+                            type="button"
+                            className="text-[#6BAED6] underline"
+                            onClick={onRetryTurmas}
+                          >
+                            Tentar novamente
+                          </button>
+                        </div>
+                      )}
+                      {!loadingTurmas && !turmasError && turmas.length === 0 && (
+                        <div className="px-4 py-3 text-sm text-[#01162A]">
+                          Nenhuma turma cadastrada.
+                        </div>
+                      )}
+                      {!loadingTurmas &&
+                        !turmasError &&
+                        turmas.map((turma) => (
+                          <button
+                            key={turma.id}
+                            type="button"
+                            onClick={() => {
+                              setForm((prev) => ({
+                                ...prev,
+                                turma: turma.nome,
+                                turma_id: turma.id
+                              }))
+                              setIsTurmaListOpen(false)
+                            }}
+                            className={`w-full px-4 py-3 text-left text-sm hover:bg-[#6BAED6]/20 transition-colors ${
+                              form.turma_id === turma.id ? 'bg-[#6BAED6]/10 font-semibold' : ''
+                            }`}
+                          >
+                            {turma.nome}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-[#01162A]">
@@ -134,6 +215,12 @@ function CreateAulaModal({
               />
             </div>
 
+            {formError && (
+              <div className="rounded-xl border-2 border-[#FDA29B] bg-[#FEE4E2] px-4 py-3 text-sm text-[#7A271A]">
+                {formError}
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-3 pt-4">
               <button
                 type="button"
@@ -160,6 +247,9 @@ export default function AulasPage() {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [aulas, setAulas] = useState<Aula[]>([])
+  const [turmas, setTurmas] = useState<Turma[]>([])
+  const [loadingTurmas, setLoadingTurmas] = useState(false)
+  const [turmasError, setTurmasError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -167,10 +257,23 @@ export default function AulasPage() {
 
   function normalizeAula(raw: any, fallback?: AulaFormState): Aula {
     const id = raw?.id ?? (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Date.now()))
-    const assunto = raw?.assunto ?? raw?.titulo ?? fallback?.assunto ?? 'Aula sem título'
-    const turma = raw?.turma ?? raw?.turma_nome ?? fallback?.turma ?? 'Turma não informada'
-    const data = raw?.data ?? fallback?.data ?? ''
-    const descricao = raw?.descricao ?? fallback?.descricao ?? ''
+    const uploadRaw = raw?.upload_arquivo
+    let uploadData: any = null
+    if (typeof uploadRaw === 'string') {
+      try {
+        uploadData = JSON.parse(uploadRaw)
+      } catch {
+        uploadData = null
+      }
+    } else if (uploadRaw && typeof uploadRaw === 'object') {
+      uploadData = uploadRaw
+    }
+    const assunto = raw?.assunto ?? raw?.titulo ?? uploadData?.assunto ?? fallback?.assunto ?? 'Aula sem título'
+    const turma = raw?.turma ?? raw?.turma_nome ?? uploadData?.turma ?? uploadData?.turma_nome ?? fallback?.turma ?? 'Turma não informada'
+    const turmaId = raw?.turma_id ?? raw?.turmaId ?? uploadData?.turma_id ?? fallback?.turma_id ?? null
+    const data = raw?.data ?? uploadData?.data ?? fallback?.data ?? ''
+    const descricao = raw?.descricao ?? uploadData?.descricao ?? fallback?.descricao ?? ''
+    const arquivo = raw?.arquivo ?? uploadData?.arquivo ?? null
 
     let titulo = raw?.titulo
     if (!titulo) {
@@ -182,8 +285,10 @@ export default function AulasPage() {
       titulo,
       assunto,
       turma,
+      turma_id: turmaId,
       data,
-      descricao
+      descricao,
+      arquivo
     }
   }
 
@@ -221,6 +326,7 @@ export default function AulasPage() {
 
   useEffect(() => {
     loadAulas()
+    loadTurmas()
     return () => {
       if (toastTimeout.current) clearTimeout(toastTimeout.current)
     }
@@ -265,12 +371,27 @@ export default function AulasPage() {
     }
   }
 
+  async function loadTurmas() {
+    try {
+      setLoadingTurmas(true)
+      setTurmasError(null)
+      const response = await turmasAPI.list()
+      setTurmas(response.items || [])
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Erro desconhecido'
+      setTurmasError(errorMessage)
+    } finally {
+      setLoadingTurmas(false)
+    }
+  }
+
   async function handleCreateAula(formData: AulaFormState) {
     try {
       console.log('📝 Criando nova aula:', formData)
       const response = await aulasAPI.create({
         assunto: formData.assunto,
         turma: formData.turma,
+        turma_id: formData.turma_id,
         data: formData.data,
         descricao: formData.descricao,
         arquivo: formData.arquivo
@@ -389,8 +510,12 @@ export default function AulasPage() {
         open={isOpen}
         onClose={() => setIsOpen(false)}
         onCreate={handleCreateAula}
+        turmas={turmas}
+        loadingTurmas={loadingTurmas}
+        turmasError={turmasError}
+        onRetryTurmas={loadTurmas}
       />
     </div>
   )
 }
- 
+
