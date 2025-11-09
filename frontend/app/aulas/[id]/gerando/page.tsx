@@ -1,6 +1,5 @@
 'use client'
 
-import Tabs from '@components/Tabs'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 
@@ -65,24 +64,15 @@ export default function GerandoMaterialPage() {
   }, [params, route, router])
 
   return (
-    <div>
-      <Tabs
-        tabs={[
-          { href: '/', label: 'turmas' },
-          { href: '/aulas', label: 'aulas' }
-        ]}
-      />
-
-      <section className="panel-blue rounded-tl-none p-8 -mt-px">
-        <div className="border-2 border-[#6BAED6] rounded-3xl p-12 bg-transparent flex items-center justify-center min-h-[400px]">
-          <div className="flex flex-col items-center gap-6">
-            <div className="w-20 h-20 rounded-full border-4 border-[#6BAED6] border-t-transparent animate-spin" />
-            <div className="text-xl font-semibold text-[#01162A]">
-              {error ? 'Erro ao gerar' : 'Gerando conteúdo...'}
-            </div>
+    <div className="py-8">
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-6">
+          <div className="w-20 h-20 rounded-full border-4 border-[#6BAED6] border-t-transparent animate-spin" />
+          <div className="text-xl font-semibold text-[#01162A]">
+            {error ? 'Erro ao gerar' : 'Gerando conteúdo...'}
           </div>
         </div>
-      </section>
+      </div>
     </div>
   )
 }
