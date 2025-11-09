@@ -8,7 +8,7 @@ body {
 }
 
 .container-page {
-  @apply max-w-6xl mx-auto px-4;
+  @apply max-w-7xl mx-auto px-4;
 }
 
 .card {
@@ -16,10 +16,20 @@ body {
 }
 
 .tab {
-  @apply px-4 py-2 rounded-lg border border-neutral-300 bg-white text-neutral-700;
+  @apply px-5 py-2 rounded-full border border-neutral-300 bg-white text-neutral-700;
 }
 
 .tab-active {
-  @apply border-brand-400 bg-brand-50 text-neutral-900;
+  @apply border-sky-400 bg-sky-400 text-white;
+}
+
+/* Themed content container whose background color changes per tab/page */
+.panel {
+  @apply border border-neutral-200 shadow-sm;
+  background-color: var(--panel-bg, #ffffff);
+  border-top-left-radius: 0;
+  border-top-right-radius: 2rem;
+  border-bottom-right-radius: 2rem;
+  border-bottom-left-radius: 2rem;
 }
 

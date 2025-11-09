@@ -7,6 +7,7 @@ import httpx
 
 from app.core.config import settings
 from app.schemas.lesson import Persona, Material, GenerateMaterialRequest
+from app.prompts import chat_system_prompt, build_user_message
 
 
 def _choose_hyperfocus(subject: str) -> str:
@@ -105,7 +106,7 @@ def local_generate(req: GenerateMaterialRequest) -> Material:
             "",
             "4) Atividade guiada (passos curtos)",
             "Instrua em etapas numeradas e visíveis:",
-            "- Passo 1: (ex.: listar conceitos‑bloco).",
+            "- Passo 1: (ex.: listar conceitos de bloco).",
             "- Passo 2: (ex.: ligar conceitos como se fossem crafting).",
             f"- Passo 3: (ex.: montar a 'construção' final que explica {req.assunto}).",
             "Ofereça opção de registro: quadro, caderno, cartões ou esquema que lembre crafting.",
@@ -150,23 +151,9 @@ async def openai_generate(req: GenerateMaterialRequest) -> Optional[Material]:
         return None
 
     persona = build_persona(req.assunto, req.hyperfocus)
-    system = (
-        "Você é uma IA pedagógica que adapta roteiros de aula para estudantes autistas. "
-        "Siga rigorosamente as estratégias de suporte e o hiperfoco fornecidos. Gere um roteiro com frases prontas "
-        "para o professor falar (ex.: 'Professor: ...') e exemplos explícitos usando o hiperfoco. "
-        "Responda EM JSON COMPACTO com as chaves: recomendacoes (string), roteiro (string multiline), resumo (string), "
-        "exemplos (array de 3 a 5 frases curtas), perguntas (array de 3 a 5 perguntas curtas). "
-        "Nada de formatação markdown; apenas JSON válido."
-    )
+    system = chat_system_prompt()
 
-    user_payload = {
-        "assunto": req.assunto,
-        "descricao": req.descricao,
-        "turma": req.turma,
-        "data": req.data,
-        "feedback": req.feedback,
-        "persona": persona.dict(),
-    }
+    user_message = build_user_message(req, persona)
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:
@@ -182,11 +169,7 @@ async def openai_generate(req: GenerateMaterialRequest) -> Optional[Material]:
                     "response_format": {"type": "json_object"},
                     "messages": [
                         {"role": "system", "content": system},
-                        {
-                            "role": "user",
-                            "content": "Gere material didático adaptado. Entrada (JSON): "
-                            + json.dumps(user_payload, ensure_ascii=False),
-                        },
+                        {"role": "user", "content": user_message},
                     ],
                 },
             )

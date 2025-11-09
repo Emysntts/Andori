@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Tabs from '@components/Tabs'
 import { useRouter } from 'next/navigation'
 
@@ -163,6 +163,20 @@ export default function AulasPage() {
     { id: 'a2', titulo: 'Aula de História do Brasil', data: '20/06' }
   ])
 
+  useEffect(() => {
+    const docEl = document.documentElement
+    const previousPanel = getComputedStyle(docEl).getPropertyValue('--panel-bg')
+    const aulasPanel = '#f4a3ba' // pink for Aulas container
+    docEl.style.setProperty('--panel-bg', aulasPanel)
+    return () => {
+      if (previousPanel) {
+        docEl.style.setProperty('--panel-bg', previousPanel)
+      } else {
+        docEl.style.removeProperty('--panel-bg')
+      }
+    }
+  }, [])
+
   const nextId = useMemo(
     () => `a${(aulas.length + 1).toString()}`,
     [aulas.length]
@@ -177,7 +191,7 @@ export default function AulasPage() {
         ]}
       />
 
-      <div className="card p-5">
+      <div className="panel rounded-tl-none p-5 -mt-px">
         <div className="flex items-center justify-between mb-5">
           <div className="text-lg font-semibold">Aulas</div>
           <button

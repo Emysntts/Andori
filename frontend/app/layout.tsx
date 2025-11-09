@@ -1,5 +1,6 @@
 import './globals.css'
 import type { ReactNode } from 'react'
+import Image from 'next/image'
 
 export const metadata = {
   title: 'Andori',
@@ -9,23 +10,28 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body>
-        <header className="border-b bg-white">
-          <div className="container-page py-4 flex items-center justify-between">
-            <div className="text-2xl font-semibold">Andori</div>
-            <div className="flex items-center gap-3">
-              <input
-                placeholder="Buscar..."
-                className="hidden md:block w-72 border rounded-lg px-3 py-2 text-sm"
+      <body className="bg-brand-50">
+        <header className="py-6">
+          <div className="container-page flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Image
+                src="/Frame%201%201.png"
+                alt="Andori"
+                width={180}
+                height={48}
+                priority
               />
-              <div className="text-sm text-neutral-600">
-                Edson <span className="text-neutral-400">• professor de geografia</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <div className="text-neutral-900 font-semibold">Edson</div>
+                <div className="text-neutral-600 text-sm">Professor</div>
               </div>
-              <div className="w-8 h-8 rounded-full border" />
+              <div className="w-10 h-10 rounded-full bg-neutral-300" />
             </div>
           </div>
         </header>
-        <main className="container-page py-6">{children}</main>
+        <main className="container-page pb-10">{children}</main>
       </body>
     </html>
   )
