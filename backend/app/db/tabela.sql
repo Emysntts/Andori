@@ -8,10 +8,10 @@ CREATE TABLE IF NOT EXISTS public.alunos (
   dificuldade TEXT,
   laudo TEXT,
   observacoes TEXT,
-  recomendacoes TEXT,
   nivel_de_suporte TEXT -- baixo, medio, alto
+  
 
-  descricao_do_aluno TEXT -- pelo professor
+   descricao_do_aluno TEXT -- pelo professor
 );
 
 -- 2.1 Turmas (depende de coordenadores)
@@ -38,16 +38,16 @@ CREATE TABLE IF NOT EXISTS public.ARRMD (
     disciplina TEXT,
     assunto TEXT,
     descricao TEXT,
-    upload_arquivo BYTEA, -- bytea?
+    upload_arquivo JSONB, -- bytea?
 
     -- feedback do professor 
     feedback_material TEXT, -- material ajudou?
     feedback_aula TEXT, -- muito, um pouco ...
+    recomendacoes_ia TEXT,
 
     roteiro JSONB,
     resumo JSONB
 )
-
 
 
 
