@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Tabs from '@components/Tabs'
 import { useRouter } from 'next/navigation'
+import Calendar from '@components/Calendar'
 
 type Aula = { id: string; titulo: string; data: string }
 
@@ -193,23 +194,30 @@ export default function AulasPage() {
 
       <div className="panel rounded-tl-none p-5 -mt-px">
         <div className="flex items-center justify-between mb-5">
-          <div className="text-lg font-semibold">Aulas</div>
+          <div className="text-lg font-semibold text-white">Aulas</div>
           <button
-            className="px-3 py-2 rounded-lg border border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+            className="px-3 py-2 rounded-lg border border-white/60 text-white hover:bg-white/10"
             onClick={() => setIsOpen(true)}
           >
             add aula
           </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-1 card h-64 flex items-center justify-center text-neutral-500">
-            calendário
+          <div className="md:col-span-1">
+            <Calendar />
           </div>
           <div className="md:col-span-2 space-y-4">
             {aulas.map((a) => (
-              <div key={a.id} className="card p-4">
-                <div className="font-medium">{a.titulo}</div>
-                <div className="text-neutral-500 text-sm">{a.data}</div>
+              <div key={a.id} className="bg-white border border-neutral-200 rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium text-[#01162A]">{a.titulo}</div>
+                    <div className="text-neutral-500 text-sm">{a.data}</div>
+                  </div>
+                  <button className="px-3 py-1.5 rounded-lg border border-neutral-300 text-sm hover:bg-neutral-50">
+                    abrir
+                  </button>
+                </div>
               </div>
             ))}
           </div>

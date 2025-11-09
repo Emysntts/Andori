@@ -8,6 +8,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        andori: {
+          pink: '#F995AD',
+          paper: '#FFFEF1',
+          cream: '#FFF1C4',
+          sand: '#FFE496',
+          gold: '#FFCA3A',
+          blue: '#2857A4',
+          sky: '#58B4EE',
+          navy: '#01162A'
+        },
         brand: {
           50: '#fff9e6',
           100: '#ffefbf',
