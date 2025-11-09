@@ -1,18 +1,24 @@
 ## Andori
+<img src="https://github.com/user-attachments/assets/de224cb1-8150-4000-a62a-89957db4245b" alt="background_andori" />
 
-E-learning adaptativo para traduzir qualquer matéria escolar em lições personalizadas a partir do hiperfoco de estudantes neurodivergentes.
+Uma plataforma de e-learning adaptativa que utiliza Inteligência Artificial generativa para transformar qualquer matéria escolar em lições personalizadas e envolventes, adaptadas aos interesses e hiperfocos de estudantes neurodivergentes — com foco inicial em crianças do Ensino Fundamental I, especialmente com Transtorno do Espectro Autista (TEA).
 
-<img src="frontend/public/Frame 1 1.png" alt="Andori background" width="50%" />
+## Contexto e Propósito
+O cenário educacional brasileiro enfrenta desafios crescentes na inclusão e equidade.
+Na Paraíba, o número de alunos público-alvo da educação especial cresceu de 15 mil (2015) para 39 mil (2023), e o número de estudantes com TEA nas escolas brasileiras saltou de 41 mil para 884 mil em menos de uma década.
+
+Esses [dados](https://download.inep.gov.br/publicacoes/institucionais/estatisticas_e_indicadores/resumo_tecnico_censo_escolar_2024.pdf) evidenciam a necessidade de soluções que apoiem professores e escolas no processo de inclusão, reduzindo evasão e ampliando engajamento e compreensão.
 
 ### Ideia (MVP)
-- **O que é**: plataforma que usa IA generativa para produzir resumos e questões alinhados a objetivos de aprendizagem, adaptando linguagem e contexto ao hiperfoco do estudante (ex.: dinossauros, trens, espaço).
+- **O que é**: Plataforma que gera materiais pedagógicos personalizados (resumos, roteiros e questões) com base nos objetivos de aprendizagem definidos pelo educador e nos interesses/hiperfocos dos alunos (ex.: dinossauros, trens, espaço, planetas).
+- **Como funciona**
+O professor cria suas aulas na plataforma e obtém materiais adaptados automaticamente à realidade de cada turma — integrando o ensino tradicional com práticas inclusivas.
+- **Objetivo**
+Simplificar a rotina docente e oferecer uma forma intuitiva, prática e humanizada de incluir cada aluno em seu próprio ritmo, sem comprometer o fluxo pedagógico coletivo.
 - **Papéis principais**:
   - **Familiar/Responsável**: informa hiperfoco, nível de suporte, preferências cognitivas e observações.
   - **Educador/Professor**: define objetivos/habilidades e gera materiais revisáveis e publicáveis.
-- **Objetivo**: unir práticas tradicionais e inclusão, reduzindo evasão e aumentando engajamento e compreensão.
 
-### Contexto
-- Cresce o número de estudantes com TEA no Brasil, demandando soluções escaláveis que apoiem escolas públicas.
 
 ## Identidade visual
 - **Paleta (Tailwind `andori` + `brand`)**
@@ -55,16 +61,10 @@ E-learning adaptativo para traduzir qualquer matéria escolar em lições person
 
 ## Próximos passos (roadmap)
 - [ ] Fluxo completo de geração de lição (resumo + questões) com revisão e publicação.
-- [ ] Perfis e autenticação por papel (Familiar, Coordenador, Educador).
 - [ ] Dashboard do coordenador (turmas, professores, disciplinas).
-- [ ] Publicação de materiais e trilhas por turma/aluno.
-- [ ] Acessibilidade (WCAG): foco/teclado, contraste, leitura simplificada.
-- [ ] Telemetria básica (logs, métricas) e monitoramento de custos de IA.
-- [ ] Testes E2E (Playwright/Cypress) e integração (pytest + HTTPX).
-- [ ] Deploy (preview + produção) e configuração de variáveis seguras.
 
 ## Organização e referências
-- Estrutura de diretórios organizada por serviços: `backend/`, `frontend/`, `docs/`.
+- Estrutura de diretórios organizada por serviços: `backend/`, `frontend/`.
 - Veja também:
   - `backend/app/api/v1/` para rotas da API.
   - `frontend/app/` para rotas do Next.js.
