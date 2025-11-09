@@ -74,6 +74,7 @@ export default function MaterialGeradoPage() {
   const route = useParams<{ id: string }>()
   const [openFeedback, setOpenFeedback] = useState(false)
   const [materialFromAgent, setMaterialFromAgent] = useState<LessonMaterial | null>(null)
+  const [isAccepted, setIsAccepted] = useState(false)
 
   const assunto = params.get('assunto') || 'Material tema aula'
   const descricao = params.get('descricao') || ''
@@ -89,6 +90,11 @@ export default function MaterialGeradoPage() {
   useEffect(() => {
     const id = route?.id
     if (!id) return
+    
+    // Verificar se o material já foi aceito
+    const accepted = localStorage.getItem(`material:${id}:accepted`)
+    setIsAccepted(!!accepted)
+    
     const raw = sessionStorage.getItem(`material:${id}`)
     if (raw) {
       try {
@@ -150,27 +156,55 @@ export default function MaterialGeradoPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <button
-              className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#F4D35E] font-semibold hover:bg-[#F4D35E]/10 transition-colors"
-              onClick={() => setOpenFeedback(true)}
-            >
-              editar
-            </button>
-            <button
-              className="px-6 py-3 rounded-xl border-2 border-[#EFB4C8] text-[#EFB4C8] font-semibold hover:bg-[#EFB4C8]/10 transition-colors"
-              onClick={() => {
-                const id = route?.id
-                if (id) {
-                  // Limpar completamente o material
-                  localStorage.removeItem(`material:${id}:accepted`)
-                  sessionStorage.removeItem(`material:${id}`)
-                  // Adicionar parâmetro para forçar refresh na página da aula
-                  router.push(`/aulas/${id}?refresh=${Date.now()}`)
-                }
-              }}
-            >
-              excluir
-            </button>
+            {isAccepted ? (
+              <>
+                <button
+                  className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#F4D35E] font-semibold hover:bg-[#F4D35E]/10 transition-colors"
+                  onClick={() => setOpenFeedback(true)}
+                >
+                  editar
+                </button>
+                <button
+                  className="px-6 py-3 rounded-xl border-2 border-[#EFB4C8] text-[#EFB4C8] font-semibold hover:bg-[#EFB4C8]/10 transition-colors"
+                  onClick={() => {
+                    const id = route?.id
+                    if (id) {
+                      // Limpar completamente o material
+                      localStorage.removeItem(`material:${id}:accepted`)
+                      sessionStorage.removeItem(`material:${id}`)
+                      // Adicionar parâmetro para forçar refresh na página da aula
+                      router.push(`/aulas/${id}?refresh=${Date.now()}`)
+                    }
+                  }}
+                >
+                  excluir
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#F4D35E] font-semibold hover:bg-[#F4D35E]/10 transition-colors"
+                  onClick={() => setOpenFeedback(true)}
+                >
+                  Gerar Novamente
+                </button>
+                <button
+                  className="px-6 py-3 rounded-xl bg-[#6BAED6] text-white font-semibold hover:bg-[#3B82C8] transition-colors"
+                  onClick={() => {
+                    const id = route?.id
+                    if (id) {
+                      // Salvar material aceito no localStorage
+                      localStorage.setItem(`material:${id}:accepted`, 'true')
+                      // Voltar para página da aula
+                      const urlParams = new URLSearchParams(params.toString())
+                      router.push(`/aulas/${id}?${urlParams.toString()}&refresh=${Date.now()}`)
+                    }
+                  }}
+                >
+                  Aceitar Material
+                </button>
+              </>
+            )}
           </div>
         </div>
 

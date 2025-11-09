@@ -15,9 +15,10 @@ export default function GerandoMaterialPage() {
     const run = async () => {
       const id = route?.id
       
-      // Limpar qualquer material existente antes de gerar novo
+      // Limpar TODOS os materiais relacionados antes de gerar novo
       if (id) {
         sessionStorage.removeItem(`material:${id}`)
+        // Não limpar o accepted aqui, pois pode estar editando
       }
       
       const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || ''
