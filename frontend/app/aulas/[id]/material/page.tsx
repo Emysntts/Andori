@@ -3,21 +3,22 @@
 import Tabs from '@components/Tabs'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { generateLessonMaterial, LessonMaterial } from '@features/lesson-generation/agent'
 
-function toText(value: unknown): string {
-  if (typeof value === 'string') return value
-  if (Array.isArray(value)) return value.map((v) => toText(v)).join('\n')
-  if (value && typeof value === 'object') {
-    try {
-      return Object.entries(value as Record<string, unknown>)
-        .map(([k, v]) => `${k.split('_').join(' ')}: ${toText(v)}`)
-        .join('\n')
-    } catch {
-      return JSON.stringify(value)
-    }
-  }
-  return String(value ?? '')
+type Roteiro = {
+  topicos: string[]
+  falas: string[]
+  exemplos: string[]
+}
+
+type Resumo = {
+  texto: string
+  exemplo: string
+}
+
+type GenerateMaterialResponse = {
+  roteiro: Roteiro
+  resumo: Resumo
+  source: string
 }
 
 function FeedbackModal({
@@ -73,7 +74,7 @@ export default function MaterialGeradoPage() {
   const params = useSearchParams()
   const route = useParams<{ id: string }>()
   const [openFeedback, setOpenFeedback] = useState(false)
-  const [materialFromAgent, setMaterialFromAgent] = useState<LessonMaterial | null>(null)
+  const [materialFromBackend, setMaterialFromBackend] = useState<GenerateMaterialResponse | null>(null)
   const [isAccepted, setIsAccepted] = useState(false)
 
   const assunto = params.get('assunto') || 'Material tema aula'
@@ -81,11 +82,6 @@ export default function MaterialGeradoPage() {
   const turma = params.get('turma') || ''
   const data = params.get('data') || ''
   const feedback = params.get('feedback') || undefined
-
-  const fallbackMaterial = useMemo(
-    () => generateLessonMaterial({ assunto, descricao, turma, data, feedback }),
-    [assunto, descricao, turma, data, feedback]
-  )
 
   useEffect(() => {
     const id = route?.id
@@ -98,21 +94,13 @@ export default function MaterialGeradoPage() {
     const raw = sessionStorage.getItem(`material:${id}`)
     if (raw) {
       try {
-        const parsed = JSON.parse(raw)
-        const normalized: LessonMaterial = {
-          ...parsed,
-          recomendacoes: toText(parsed?.recomendacoes),
-          roteiro: toText(parsed?.roteiro),
-          resumo: toText(parsed?.resumo)
-        }
-        setMaterialFromAgent(normalized)
+        const parsed: GenerateMaterialResponse = JSON.parse(raw)
+        setMaterialFromBackend(parsed)
       } catch {
-        setMaterialFromAgent(null)
+        setMaterialFromBackend(null)
       }
     }
   }, [route])
-
-  const material = materialFromAgent ?? fallbackMaterial
 
   function List({ items }: { items: string[] | undefined | null }) {
     if (!items || items.length === 0) return null
@@ -151,9 +139,7 @@ export default function MaterialGeradoPage() {
         <div className="flex items-start justify-between mb-8">
           <div>
             <h1 className="text-4xl font-bold text-[#01162A] mb-2">{assunto}</h1>
-            <p className="text-sm text-[#01162A]/70">
-              Persona: {material.persona.label} — hiperfoco em {material.persona.hyperfocus}
-            </p>
+            <p className="text-sm text-[#01162A]/70">{turma || 'Turma não informada'} {data ? `— ${data}` : ''}</p>
           </div>
           <div className="flex gap-3">
             {isAccepted ? (
@@ -209,33 +195,40 @@ export default function MaterialGeradoPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent min-h-[200px]">
-            <h3 className="font-bold text-2xl text-[#01162A] mb-4 text-center">Recomendações gerais</h3>
-            <p className="text-[#01162A] whitespace-pre-line leading-relaxed">{material.recomendacoes}</p>
-          </div>
-          
-          <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent min-h-[300px]">
-            <h3 className="font-bold text-2xl text-[#01162A] mb-4 text-center">Roteiro da aula</h3>
-            <p className="text-[#01162A] whitespace-pre-line leading-relaxed">{material.roteiro}</p>
-          </div>
-          
-          <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent min-h-[250px]">
-            <h3 className="font-bold text-2xl text-[#01162A] mb-4 text-center">Resumo do conteúdo</h3>
-            <p className="text-[#01162A] whitespace-pre-line leading-relaxed">{material.resumo}</p>
-          </div>
-          
-          {material.exemplos && (
+          {!materialFromBackend ? (
             <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent">
-              <h3 className="font-bold text-2xl text-[#01162A] mb-4 text-center">Exemplos prontos para usar em aula</h3>
-              <List items={material.exemplos} />
+              <p className="text-[#01162A]">Nenhum material disponível. Tente gerar novamente.</p>
             </div>
-          )}
-          
-          {material.perguntas && (
+          ) : (
+            <>
+              <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent">
+                <h3 className="font-bold text-2xl text-[#01162A] mb-4 text-center">Roteiro da aula</h3>
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="font-semibold text-[#01162A] mb-2">Tópicos</h4>
+                    <List items={materialFromBackend.roteiro?.topicos} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-[#01162A] mb-2">Falas</h4>
+                    <List items={materialFromBackend.roteiro?.falas} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-[#01162A] mb-2">Exemplos</h4>
+                    <List items={materialFromBackend.roteiro?.exemplos} />
+                  </div>
+                </div>
+              </div>
+              
             <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent">
-              <h3 className="font-bold text-2xl text-[#01162A] mb-4 text-center">Perguntas para checagem</h3>
-              <List items={material.perguntas} />
+                <h3 className="font-bold text-2xl text-[#01162A] mb-4 text-center">Resumo do conteúdo</h3>
+                <div className="space-y-3 text-[#01162A]">
+                  <p className="whitespace-pre-line leading-relaxed">{materialFromBackend.resumo?.texto}</p>
+                  {materialFromBackend.resumo?.exemplo && (
+                    <p className="italic">Exemplo: {materialFromBackend.resumo.exemplo}</p>
+                  )}
+                </div>
             </div>
+            </>
           )}
         </div>
       </div>
