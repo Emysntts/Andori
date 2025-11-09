@@ -4,14 +4,28 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
+import json
+
 from app.db.db import get_db, get_db_optional
 from app.schemas.aulas import Aula, AulaCreate, AulaUpdate
 
 router = APIRouter(prefix="/aulas", tags=["aulas"])
 
 
-@router.post("/", response_model=Aula, status_code=status.HTTP_201_CREATED)
-def create_aula(payload: AulaCreate, db: Session = Depends(get_db)) -> Aula:
+@router.post("", status_code=status.HTTP_201_CREATED)
+def create_aula(payload: Dict[str, Any], db: Optional[Session] = Depends(get_db_optional)) -> Dict[str, Any]:
+    """
+    Cria uma nova aula.
+    Payload esperado: {
+        "assunto": "Matemática",
+        "turma": "6º A",
+        "data": "DD/MM",
+        "descricao": "Descrição da aula"
+    }
+    """
+    if db is None:
+        raise HTTPException(status_code=503, detail="Banco de dados não configurado.")
+    
     insert_stmt = text(
         """
         INSERT INTO public.arrmd (assunto, descricao, upload_arquivo)
@@ -23,19 +37,22 @@ def create_aula(payload: AulaCreate, db: Session = Depends(get_db)) -> Aula:
         row = db.execute(
             insert_stmt,
             {
-                "assunto": payload.assunto,
-                "descricao": payload.descricao,
-                "upload_arquivo": payload.upload_arquivo,
+                "assunto": payload.get("assunto"),
+                "descricao": payload.get("descricao"),
+                "upload_arquivo": json.dumps(payload.get("upload_arquivo")) if payload.get("upload_arquivo") is not None else None,
             },
         ).mappings().first()
         db.commit()
     except Exception as exc:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Não foi possível criar a aula") from exc
+        raise HTTPException(
+            status_code=400,
+            detail=f"Não foi possível criar a aula: {exc}"
+        ) from exc
 
     if row is None:
         raise HTTPException(status_code=500, detail="Falha ao retornar a aula criada")
-    return Aula(**row)
+    return {"aula": dict(row)}
 
 
 @router.get("/{aula_id}", response_model=Aula)
@@ -65,6 +82,7 @@ def list_aulas(
 ) -> Dict[str, Any]:
     if db is None:
         raise HTTPException(status_code=503, detail="Banco de dados não configurado.")
+    
     if limit <= 0 or limit > 200:
         limit = 50
     if offset < 0:

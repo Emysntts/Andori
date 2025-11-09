@@ -13,13 +13,13 @@ router = APIRouter(prefix="/material", tags=["material"])
 @router.post("/generate", response_model=GenerateMaterialResponse)
 async def generate_material(req: GenerateMaterialRequest, db: Optional[Session] = Depends(get_db_optional)):
     student = fetch_student_profile(db, req.aluno_id)
-    material = await openai_generate(req, student)
-    source = "openai" if material is not None else "fallback"
+    result = await openai_generate(req, student)
+    source = "openai" if result is not None else "fallback"
 
-    if material is None:
-        material = local_generate(req, student)
+    if result is None:
+        result = local_generate(req, student)
 
-    return {"material": material, "source": source}
+    return {**result, "source": source}
 
 
 @router.post("/inputs/preview")

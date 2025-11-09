@@ -14,6 +14,13 @@ export default function GerandoMaterialPage() {
   useEffect(() => {
     const run = async () => {
       const id = route?.id
+      
+      // Limpar TODOS os materiais relacionados antes de gerar novo
+      if (id) {
+        sessionStorage.removeItem(`material:${id}`)
+        // Não limpar o accepted aqui, pois pode estar editando
+      }
+      
       const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || ''
       const payload = {
         assunto: params.get('assunto') || '',
@@ -81,18 +88,20 @@ export default function GerandoMaterialPage() {
       <Tabs
         tabs={[
           { href: '/', label: 'turmas' },
-          { href: '/aulas', label: 'aulas', active: true }
+          { href: '/aulas', label: 'aulas' }
         ]}
       />
 
-      <div className="card p-12 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-full border-4 border-brand-300 border-t-transparent animate-spin" />
-          <div className="text-neutral-700">
-            {error ? 'erro ao gerar' : 'gerando conteúdo'}
+      <section className="panel-blue rounded-tl-none p-8 -mt-px">
+        <div className="border-2 border-[#6BAED6] rounded-3xl p-12 bg-transparent flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center gap-6">
+            <div className="w-20 h-20 rounded-full border-4 border-[#6BAED6] border-t-transparent animate-spin" />
+            <div className="text-xl font-semibold text-[#01162A]">
+              {error ? 'Erro ao gerar' : 'Gerando conteúdo...'}
+            </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   )
 }

@@ -3,33 +3,50 @@
 @tailwind utilities;
 
 /* Layout base */
+html {
+  height: 100vh;
+  overflow: hidden;
+}
+
 body {
-  @apply bg-neutral-50 text-neutral-900;
+  @apply text-neutral-900;
+  background-color: #FFFEF1;
+  background-image: url('/background.png');
+  background-size: 100% 100%;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .container-page {
-  @apply max-w-7xl mx-auto px-4;
+  @apply max-w-7xl mx-auto px-6;
 }
 
 .card {
   @apply bg-white border border-neutral-200 rounded-xl shadow-sm;
 }
 
-.tab {
-  @apply px-5 py-2 rounded-full border border-neutral-300 bg-white text-neutral-700;
-}
-
-.tab-active {
-  @apply border-sky-400 bg-sky-400 text-white;
-}
-
-/* Themed content container whose background color changes per tab/page */
+/* Themed content container */
 .panel {
-  @apply border border-neutral-200 shadow-sm;
-  background-color: var(--panel-bg, #ffffff);
+  background-color: #FFFEF1;
+  border: 3px solid #EFB4C8;
   border-top-left-radius: 0;
-  border-top-right-radius: 2rem;
-  border-bottom-right-radius: 2rem;
-  border-bottom-left-radius: 2rem;
+  border-top-right-radius: 2.5rem;
+  border-bottom-right-radius: 2.5rem;
+  border-bottom-left-radius: 2.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.panel-blue {
+  background-color: #FFFEF1;
+  border: 3px solid #6BAED6;
+  border-top-left-radius: 0;
+  border-top-right-radius: 2.5rem;
+  border-bottom-right-radius: 2.5rem;
+  border-bottom-left-radius: 2.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
