@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Tabs from '@components/Tabs'
 import { useRouter } from 'next/navigation'
 import Calendar from '@components/Calendar'
+import DatePicker from '@components/DatePicker'
 import {
   aulasAPI,
   turmasAPI,
@@ -173,14 +174,11 @@ function CreateAulaModal({
                 <label className="text-sm font-semibold text-[#01162A]">
                   Data
                 </label>
-                <input
-                  type="date"
-                  className="w-full rounded-xl border-2 border-[#C5C5C5] px-4 py-3 focus:outline-none focus:border-[#6BAED6] bg-transparent text-[#01162A]"
+                <DatePicker
                   value={form.data}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, data: e.target.value }))
+                  onChange={(iso) =>
+                    setForm((f) => ({ ...f, data: iso }))
                   }
-                  required
                 />
               </div>
             </div>
