@@ -26,3 +26,23 @@ class StudentFeedback(BaseModel):
     aluno_id: UUID
     feedback: str
 
+
+class StudentPerformanceEntry(BaseModel):
+    aluno_id: UUID
+    desempenho: List[str]
+
+
+class MaterialPerformanceBase(BaseModel):
+    arrmd_id: UUID
+    material_util: Optional[str] = None
+    observacoes: Optional[str] = None
+    alunos: List[StudentPerformanceEntry]
+
+
+class MaterialPerformanceCreate(MaterialPerformanceBase):
+    pass
+
+
+class MaterialPerformance(MaterialPerformanceBase):
+    material_id: UUID
+

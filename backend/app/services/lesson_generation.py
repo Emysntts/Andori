@@ -149,7 +149,7 @@ def _extract_ano_from_text(turma_text: str) -> Optional[str]:
         return f"{match.group(1)}º ano"
     num = re.search(r"\d+", s)
     if num:
-        return f"{num.group(1)}º ano"
+        return f"{num.group(0)}º ano"
     return None
 
 

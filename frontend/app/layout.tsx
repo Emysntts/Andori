@@ -15,6 +15,8 @@ export const metadata = {
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const professorAvatar = '/pfp3.png'
+
   return (
     <html lang="pt-BR">
       <body className={poppins.className}>
@@ -34,7 +36,16 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <div className="text-[#01162A] font-bold text-lg">Edson</div>
                 <div className="text-[#01162A] text-sm">Professor</div>
               </div>
-              <div className="w-14 h-14 rounded-full bg-[#6BAED6] flex-shrink-0" />
+              <div className="relative w-14 h-14 rounded-full overflow-hidden flex-shrink-0">
+                <Image
+                  src={professorAvatar}
+                  alt="Foto do professor Edson"
+                  fill
+                  sizes="56px"
+                  className="object-cover"
+                  priority
+                />
+              </div>
             </div>
           </div>
         </header>

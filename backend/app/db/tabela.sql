@@ -33,22 +33,35 @@ CREATE TABLE IF NOT EXISTS public.turmas_professores (
 );
 
 
-CREATE TABLE IF NOT EXISTS public.ARRMD (
-    -- input do professor para gerar 
-    disciplina TEXT,
-    assunto TEXT,
-    descricao TEXT,
-    upload_arquivo JSONB, -- bytea?
+CREATE TABLE IF NOT EXISTS public.arrmd (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  disciplina       TEXT,
+  assunto          TEXT,
+  descricao        TEXT,
+  upload_arquivo   JSONB,
+  feedback_material TEXT,
+  turma_id         UUID,  -- deixe NULL por enquanto; torne NOT NULL após preencher
+);
 
-    -- feedback do professor 
-    feedback_material TEXT, -- material ajudou?
-    feedback_aula TEXT, -- muito, um pouco ...
-    recomendacoes_ia TEXT,
+CREATE TABLE IF NOT EXISTS public.arrmd_material (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  aula_id          UUID NOT NULL,
+  roteiro          JSONB NOT NULL,
+  resumo           JSONB NOT NULL,
+  source           TEXT,
+  accepted         BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  recomendacoes_ia TEXT,
+  material_util    TEXT,
+  observacoes      TEXT
+);
 
-    roteiro JSONB,
-    resumo JSONB
-)
-
+CREATE TABLE IF NOT EXISTS public.feedback_aluno_aula (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_arrmd UUID NOT NULL REFERENCES public.ARRMD(id) ON DELETE CASCADE,
+  aluno_id UUID NOT NULL REFERENCES public.alunos(id) ON DELETE CASCADE,
+  feedback TEXT
+);
 
 
 

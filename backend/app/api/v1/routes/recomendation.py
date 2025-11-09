@@ -128,11 +128,29 @@ def get_recomendations(
             result["observacoes"] = obs_row["observacoes"]
     if arrmd_id:
         ia_row = db.execute(
-            text("SELECT recomendacoes_ia FROM public.arrmd WHERE id = :arrmd_id"),
+            text(
+                """
+                SELECT arrmd.id,
+                       arrmd.recomendacoes_ia,
+                       arrmd.assunto,
+                       arrmd.descricao,
+                       arrmd.upload_arquivo,
+                       t.nome AS turma_nome
+                FROM public.arrmd
+                LEFT JOIN public.turmas t ON t.id = (arrmd.upload_arquivo->>'turma_id')::uuid
+                WHERE arrmd.id = :arrmd_id
+                """
+            ),
             {"arrmd_id": arrmd_id},
         ).mappings().first()
         if ia_row:
-            result["recomendacoes_ia"] = ia_row["recomendacoes_ia"]
+            result["recomendacoes"] = {
+                "arrmd_id": ia_row["id"],
+                "recomendacoes_ia": ia_row["recomendacoes_ia"],
+                "assunto": ia_row.get("assunto"),
+                "descricao": ia_row.get("descricao"),
+                "turma_nome": ia_row.get("turma_nome"),
+            }
 
     if not result:
         raise HTTPException(status_code=404, detail="Nenhum conteúdo encontrado para os parâmetros informados.")

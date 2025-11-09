@@ -9,8 +9,10 @@ import Tabs from '@components/Tabs'
 import {
   aulasAPI,
   descriptionAPI,
+  recommendationAPI,
   studentsAPI,
   type Aula,
+  type RecommendationContent,
   type StudentProfile
 } from '@lib/api'
 
@@ -135,6 +137,9 @@ export default function AlunoPage({ params }: Props) {
   const [loadingAulas, setLoadingAulas] = useState(false)
 
   const [desempenhoMap, setDesempenhoMap] = useState<Record<string, DesempenhoRegistro>>({})
+  const [recommendation, setRecommendation] = useState<RecommendationContent | null>(null)
+  const [recommendationError, setRecommendationError] = useState<string | null>(null)
+  const [loadingRecommendation, setLoadingRecommendation] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -224,6 +229,41 @@ export default function AlunoPage({ params }: Props) {
       cancelled = true
     }
   }, [student?.turma_id, student?.turma_nome, student])
+
+  useEffect(() => {
+    if (!student) return
+    let cancelled = false
+
+    const loadRecommendation = async () => {
+      setLoadingRecommendation(true)
+      setRecommendationError(null)
+      try {
+        console.log('▶️ Buscando recomendações para aluno', alunoId)
+        const data = await recommendationAPI.get({ alunoId })
+        if (cancelled) return
+        setRecommendation(data)
+      } catch (err: any) {
+        if (!cancelled) {
+          console.error('❌ Erro ao carregar recomendações:', err)
+          const message = err?.message?.includes('404')
+            ? 'Recomendações ainda não foram geradas.'
+            : 'Não foi possível carregar as recomendações.'
+          setRecommendationError(message)
+          setRecommendation(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingRecommendation(false)
+        }
+      }
+    }
+
+    loadRecommendation()
+
+    return () => {
+      cancelled = true
+    }
+  }, [alunoId, student])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -370,7 +410,7 @@ export default function AlunoPage({ params }: Props) {
         <div className="space-y-6">
           {/* Info do Aluno */}
           <div className="border-2 border-[#C5C5C5] rounded-3xl p-6 bg-transparent">
-            <div className="flex flex-col lg:flex-row lg:items-start gap-5">
+              <div className="flex flex-col lg:flex-row lg:items-start gap-5">
               <div className="relative w-32 h-32 rounded-full overflow-hidden flex-shrink-0">
                 <Image
                   src={selectProfileImage(student.id)}
@@ -400,27 +440,13 @@ export default function AlunoPage({ params }: Props) {
                   {student.nivel_de_suporte && (
                     <InfoPill label="Nível de suporte" value={student.nivel_de_suporte} />
                   )}
+                  <div className="md:col-span-2">
+                    <InfoPill
+                      label="Observações"
+                      value={student.observacoes || 'Sem observações registradas.'}
+                    />
+                    </div>
                   </div>
-
-                <div className="border border-[#6BAED6]/40 rounded-2xl p-4 bg-[#6BAED6]/5">
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <h2 className="text-lg font-semibold text-[#01162A]">
-                      Observações da família
-                    </h2>
-                    <span className="text-xs uppercase tracking-widest text-[#6BAED6] font-semibold">
-                      Informação fixa
-                    </span>
-                  </div>
-                  {student.observacoes ? (
-                    <p className="text-sm text-[#01162A]/80 whitespace-pre-line leading-relaxed">
-                      {student.observacoes}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-[#01162A]/50 leading-relaxed">
-                      Nenhuma observação foi cadastrada pela família.
-                    </p>
-                  )}
-                </div>
 
                 <div className="border border-dashed border-[#C5C5C5] rounded-2xl p-4 bg-white/40">
                   <div className="flex items-center justify-between gap-3 mb-3">
@@ -431,16 +457,54 @@ export default function AlunoPage({ params }: Props) {
                       onClick={handleOpenDescricaoDialog}
                       className="px-4 py-2 rounded-xl border-2 border-[#EFB4C8] text-[#EFB4C8] font-semibold hover:bg-[#EFB4C8] hover:text-white transition-colors"
                     >
-                      {descricao ? 'Editar descrição' : 'Adicionar descrição'}
+                      {descricao ? 'Editar descrição' : 'Registrar descrição'}
                     </button>
                   </div>
                   {descricao ? (
                     <p className="text-[#01162A] whitespace-pre-line">{descricao}</p>
                   ) : (
                     <p className="text-[#01162A]/60 text-sm">
-                      Ainda não há uma descrição registrada para este aluno. Clique em
-                      &quot;Adicionar descrição&quot; para compartilhar suas observações sobre o
-                      comportamento, pontos fortes e necessidades.
+                      Nenhuma descrição registrada ainda. Clique em &quot;Registrar descrição&quot;
+                      para compartilhar suas observações sobre comportamento, pontos fortes e
+                      necessidades.
+                    </p>
+                  )}
+                </div>
+
+                <div className="border border-[#C5C5C5] rounded-2xl p-4 bg-white/50">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h2 className="text-lg font-semibold text-[#01162A]">
+                      Recomendações personalizadas
+                    </h2>
+                    {loadingRecommendation && (
+                      <span className="text-xs text-[#01162A]/60">Carregando...</span>
+                    )}
+                  </div>
+
+                  {recommendation?.recomendacoes?.recomendacoes_ia ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-[#01162A]/70">
+                        {recommendation.recomendacoes?.assunto && (
+                          <span className="font-semibold text-[#6BAED6]">
+                            Aula: {recommendation.recomendacoes.assunto}
+                          </span>
+                        )}
+                      </p>
+                      <div className="rounded-xl border border-[#6BAED6]/50 bg-[#6BAED6]/10 p-4 text-sm text-[#01162A] whitespace-pre-line leading-relaxed">
+                        {recommendation.recomendacoes.recomendacoes_ia}
+                      </div>
+                      <p className="text-xs text-[#01162A]/50">
+                        Fonte: recomendações geradas pela inteligência artificial no fluxo de
+                        planejamento da aula.
+                      </p>
+                    </div>
+                  ) : recommendationError ? (
+                    <p className="text-sm text-[#01162A]/60">
+                      {recommendationError}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-[#01162A]/60">
+                      Nenhuma recomendação disponível para este aluno ainda.
                     </p>
                   )}
                 </div>

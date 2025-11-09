@@ -1,8 +1,9 @@
 'use client'
 
-import Tabs from '@components/Tabs'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+
+import { materialAPI, type MaterialItem } from '@lib/api'
 
 type Roteiro = {
   topicos: string[]
@@ -69,13 +70,29 @@ function FeedbackModal({
   )
 }
 
+const toGenerateMaterialResponse = (material: MaterialItem): GenerateMaterialResponse => ({
+  roteiro: {
+    topicos: material.roteiro?.topicos ?? [],
+    falas: material.roteiro?.falas ?? [],
+    exemplos: material.roteiro?.exemplos ?? []
+  },
+  resumo: {
+    texto: material.resumo?.texto ?? '',
+    exemplo: material.resumo?.exemplo ?? ''
+  },
+  source: material.source ?? 'openai'
+})
+
 export default function MaterialGeradoPage() {
   const router = useRouter()
   const params = useSearchParams()
   const route = useParams<{ id: string }>()
   const [openFeedback, setOpenFeedback] = useState(false)
-  const [materialFromBackend, setMaterialFromBackend] = useState<GenerateMaterialResponse | null>(null)
-  const [isAccepted, setIsAccepted] = useState(false)
+  const [sessionMaterial, setSessionMaterial] = useState<GenerateMaterialResponse | null>(null)
+  const [acceptedMaterial, setAcceptedMaterial] = useState<MaterialItem | null>(null)
+  const [materialError, setMaterialError] = useState<string | null>(null)
+  const [loadingMaterial, setLoadingMaterial] = useState(false)
+  const [savingMaterial, setSavingMaterial] = useState(false)
 
   const assunto = params.get('assunto') || 'Material tema aula'
   const descricao = params.get('descricao') || ''
@@ -86,21 +103,104 @@ export default function MaterialGeradoPage() {
   useEffect(() => {
     const id = route?.id
     if (!id) return
-    
-    // Verificar se o material já foi aceito
-    const accepted = localStorage.getItem(`material:${id}:accepted`)
-    setIsAccepted(!!accepted)
-    
+
     const raw = sessionStorage.getItem(`material:${id}`)
     if (raw) {
       try {
         const parsed: GenerateMaterialResponse = JSON.parse(raw)
-        setMaterialFromBackend(parsed)
+        setSessionMaterial(parsed)
       } catch {
-        setMaterialFromBackend(null)
+        setSessionMaterial(null)
       }
     }
   }, [route])
+
+  useEffect(() => {
+    const id = route?.id
+    if (!id) return
+    let cancelled = false
+
+    const loadAcceptedMaterial = async () => {
+      setLoadingMaterial(true)
+      setMaterialError(null)
+      try {
+        const materials = await materialAPI.listByAula(id)
+        if (cancelled) return
+        setAcceptedMaterial(materials[0] ?? null)
+      } catch (err: any) {
+        if (cancelled) return
+        console.error('❌ Erro ao carregar material aceito:', err)
+        setMaterialError('Não foi possível carregar o material salvo.')
+        setAcceptedMaterial(null)
+      } finally {
+        if (!cancelled) {
+          setLoadingMaterial(false)
+        }
+      }
+    }
+
+    loadAcceptedMaterial()
+
+    return () => {
+      cancelled = true
+    }
+  }, [route])
+
+  const aulaId = useMemo(() => {
+    const raw = route?.id
+    if (Array.isArray(raw)) return raw[0]
+    return raw ?? null
+  }, [route])
+
+  const isAccepted = Boolean(acceptedMaterial)
+  const materialToDisplay = useMemo<GenerateMaterialResponse | null>(() => {
+    if (acceptedMaterial) {
+      return toGenerateMaterialResponse(acceptedMaterial)
+    }
+    return sessionMaterial
+  }, [acceptedMaterial, sessionMaterial])
+
+  const handleAcceptMaterial = async () => {
+    if (!aulaId || !sessionMaterial) {
+      setMaterialError('Nenhum material gerado para salvar.')
+      return
+    }
+    setSavingMaterial(true)
+    setMaterialError(null)
+    try {
+      const saved = await materialAPI.accept({
+        aula_id: aulaId,
+        roteiro: sessionMaterial.roteiro,
+        resumo: sessionMaterial.resumo,
+        source: sessionMaterial.source
+      })
+      setAcceptedMaterial(saved)
+      setSessionMaterial(null)
+      sessionStorage.removeItem(`material:${aulaId}`)
+    } catch (err: any) {
+      console.error('❌ Erro ao aceitar material:', err)
+      setMaterialError(err?.message || 'Não foi possível salvar o material.')
+    } finally {
+      setSavingMaterial(false)
+    }
+  }
+
+  const handleDeleteMaterial = async () => {
+    if (!acceptedMaterial) return
+    setSavingMaterial(true)
+    setMaterialError(null)
+    try {
+      await materialAPI.delete(acceptedMaterial.id)
+      setAcceptedMaterial(null)
+      sessionStorage.removeItem(`material:${acceptedMaterial.aula_id}`)
+      router.push(`/aulas/${acceptedMaterial.aula_id}?refresh=${Date.now()}`)
+    } catch (err: any) {
+      console.error('❌ Erro ao excluir material:', err)
+      setMaterialError(err?.message || 'Não foi possível excluir o material.')
+    } finally {
+      setSavingMaterial(false)
+    }
+  }
 
   function List({ items }: { items: string[] | undefined | null }) {
     if (!items || items.length === 0) return null
@@ -145,23 +245,16 @@ export default function MaterialGeradoPage() {
             {isAccepted ? (
               <>
                 <button
-                  className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#F4D35E] font-semibold hover:bg-[#F4D35E]/10 transition-colors"
+                  className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#F4D35E] font-semibold hover:bg-[#F4D35E]/10 transition-colors disabled:opacity-50"
                   onClick={() => setOpenFeedback(true)}
+                  disabled={savingMaterial}
                 >
                   editar
                 </button>
                 <button
-                  className="px-6 py-3 rounded-xl border-2 border-[#EFB4C8] text-[#EFB4C8] font-semibold hover:bg-[#EFB4C8]/10 transition-colors"
-                  onClick={() => {
-                    const id = route?.id
-                    if (id) {
-                      // Limpar completamente o material
-                      localStorage.removeItem(`material:${id}:accepted`)
-                      sessionStorage.removeItem(`material:${id}`)
-                      // Adicionar parâmetro para forçar refresh na página da aula
-                      router.push(`/aulas/${id}?refresh=${Date.now()}`)
-                    }
-                  }}
+                  className="px-6 py-3 rounded-xl border-2 border-[#EFB4C8] text-[#EFB4C8] font-semibold hover:bg-[#EFB4C8]/10 transition-colors disabled:opacity-50"
+                  onClick={handleDeleteMaterial}
+                  disabled={savingMaterial}
                 >
                   excluir
                 </button>
@@ -169,33 +262,35 @@ export default function MaterialGeradoPage() {
             ) : (
               <>
                 <button
-                  className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#F4D35E] font-semibold hover:bg-[#F4D35E]/10 transition-colors"
+                  className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#F4D35E] font-semibold hover:bg-[#F4D35E]/10 transition-colors disabled:opacity-50"
                   onClick={() => setOpenFeedback(true)}
+                  disabled={savingMaterial}
                 >
                   Gerar Novamente
                 </button>
                 <button
-                  className="px-6 py-3 rounded-xl bg-[#6BAED6] text-white font-semibold hover:bg-[#3B82C8] transition-colors"
-                  onClick={() => {
-                    const id = route?.id
-                    if (id) {
-                      // Salvar material aceito no localStorage
-                      localStorage.setItem(`material:${id}:accepted`, 'true')
-                      // Voltar para página da aula
-                      const urlParams = new URLSearchParams(params.toString())
-                      router.push(`/aulas/${id}?${urlParams.toString()}&refresh=${Date.now()}`)
-                    }
-                  }}
+                  className="px-6 py-3 rounded-xl bg-[#6BAED6] text-white font-semibold hover:bg-[#3B82C8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleAcceptMaterial}
+                  disabled={savingMaterial || !sessionMaterial}
                 >
-                  Aceitar Material
+                  {savingMaterial ? 'Salvando...' : 'Aceitar Material'}
                 </button>
               </>
             )}
           </div>
         </div>
 
+        {materialError && (
+          <div className="mb-4 rounded-2xl border-2 border-[#EFB4C8] bg-[#EFB4C8]/10 px-4 py-3 text-[#01162A]">
+            {materialError}
+          </div>
+        )}
         <div className="space-y-6">
-          {!materialFromBackend ? (
+          {loadingMaterial && !materialToDisplay ? (
+            <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full border-4 border-[#6BAED6] border-t-transparent animate-spin" />
+            </div>
+          ) : !materialToDisplay ? (
             <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent">
               <p className="text-[#01162A]">Nenhum material disponível. Tente gerar novamente.</p>
             </div>
@@ -206,28 +301,28 @@ export default function MaterialGeradoPage() {
                 <div className="space-y-6">
                   <div>
                     <h4 className="font-semibold text-[#01162A] mb-2">Tópicos</h4>
-                    <List items={materialFromBackend.roteiro?.topicos} />
+                    <List items={materialToDisplay.roteiro?.topicos} />
                   </div>
                   <div>
                     <h4 className="font-semibold text-[#01162A] mb-2">Falas</h4>
-                    <List items={materialFromBackend.roteiro?.falas} />
+                    <List items={materialToDisplay.roteiro?.falas} />
                   </div>
                   <div>
                     <h4 className="font-semibold text-[#01162A] mb-2">Exemplos</h4>
-                    <List items={materialFromBackend.roteiro?.exemplos} />
+                    <List items={materialToDisplay.roteiro?.exemplos} />
                   </div>
                 </div>
               </div>
-              
-            <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent">
+
+              <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent">
                 <h3 className="font-bold text-2xl text-[#01162A] mb-4 text-center">Resumo do conteúdo</h3>
                 <div className="space-y-3 text-[#01162A]">
-                  <p className="whitespace-pre-line leading-relaxed">{materialFromBackend.resumo?.texto}</p>
-                  {materialFromBackend.resumo?.exemplo && (
-                    <p className="italic">Exemplo: {materialFromBackend.resumo.exemplo}</p>
+                  <p className="whitespace-pre-line leading-relaxed">{materialToDisplay.resumo?.texto}</p>
+                  {materialToDisplay.resumo?.exemplo && (
+                    <p className="italic">Exemplo: {materialToDisplay.resumo.exemplo}</p>
                   )}
                 </div>
-            </div>
+              </div>
             </>
           )}
         </div>

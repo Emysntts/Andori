@@ -2,9 +2,18 @@
 
 import Image from 'next/image'
 import { useRouter, useParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-import { aulasAPI, studentsAPI, turmasAPI, type Aula, type Aluno } from '@lib/api'
+import {
+  aulasAPI,
+  studentsAPI,
+  turmasAPI,
+  materialAPI,
+  performanceAPI,
+  type Aula,
+  type Aluno,
+  type MaterialItem
+} from '@lib/api'
 
 const profileImages = ['/pfb.png', '/pfp.png', '/pfy.png', '/pfby.png']
 
@@ -32,21 +41,88 @@ function DesempenhoDialog({
   open,
   onClose,
   onSave,
-  students = []
+  turmaId,
+  students = [],
+  initialData = null,
+  onDelete,
+  externalError,
+  loading = false
 }: {
   open: boolean
   onClose: () => void
-  onSave: (data: DesempenhoData) => void
+  onSave: (data: DesempenhoData) => Promise<void>
+  turmaId?: string | null
   students: Array<{ id: string; nome: string }>
+  initialData?: DesempenhoData | null
+  onDelete?: () => Promise<void> | void
+  externalError?: string | null
+  loading?: boolean
 }) {
   const [materialUtil, setMaterialUtil] = useState<string>('')
   const [alunosDesempenho, setAlunosDesempenho] = useState<Record<string, string[]>>({})
   const [observacoes, setObservacoes] = useState('')
   const [alunosLista, setAlunosLista] = useState(students)
+  const [loadingStudents, setLoadingStudents] = useState(false)
+  const [studentsError, setStudentsError] = useState<string | null>(null)
+  const [localError, setLocalError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setMaterialUtil(initialData?.materialUtil ?? '')
+      setObservacoes(initialData?.observacoes ?? '')
+      const map: Record<string, string[]> = {}
+      initialData?.alunos.forEach((entry) => {
+        map[entry.alunoId] = entry.desempenho ?? []
+      })
+      setAlunosDesempenho(map)
+      setLocalError(null)
+    }
+  }, [open, initialData])
 
   useEffect(() => {
     setAlunosLista(students)
   }, [students])
+
+  useEffect(() => {
+    if (!open || !turmaId) {
+      return
+    }
+
+    let cancelled = false
+    const loadStudents = async () => {
+      setLoadingStudents(true)
+      setStudentsError(null)
+      try {
+        console.log('▶️ Carregando estudantes para dialog', turmaId)
+        const response = await studentsAPI.list({ turmaId })
+        if (cancelled) return
+        const items =
+          response.items?.map((item) => ({ id: String(item.id), nome: item.nome })) ?? []
+        setAlunosLista(items)
+      } catch (err: any) {
+        if (!cancelled) {
+          console.error('❌ Erro ao carregar estudantes (dialog):', err)
+          const message = err?.message?.includes('404')
+            ? 'Nenhum estudante encontrado para esta turma.'
+            : 'Não foi possível carregar os estudantes desta turma.'
+          setStudentsError(message)
+          setAlunosLista([])
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingStudents(false)
+        }
+      }
+    }
+
+    loadStudents()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, turmaId])
 
   const opcoesUtilidade = [
     { value: 'muito_util', label: 'Muito útil', color: '#6BAED6' },
@@ -71,7 +147,7 @@ function DesempenhoDialog({
     })
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const data: DesempenhoData = {
       materialUtil,
       alunos: Object.entries(alunosDesempenho).map(([id, desempenho]) => ({
@@ -80,15 +156,45 @@ function DesempenhoDialog({
       })),
       observacoes
     }
-    onSave(data)
-    onClose()
+    setSubmitting(true)
+    setLocalError(null)
+    try {
+      await onSave(data)
+      onClose()
+    } catch (err: any) {
+      console.error('❌ Erro ao salvar desempenho (dialog):', err)
+      setLocalError(err?.message || 'Não foi possível salvar o desempenho.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (!open) return null
 
-  const alunosSection = alunosLista.length === 0 ? (
+  const handleDelete = async () => {
+    if (!onDelete) return
+    setDeleting(true)
+    setLocalError(null)
+    try {
+      await onDelete()
+      onClose()
+    } catch (err: any) {
+      console.error('❌ Erro ao excluir desempenho (dialog):', err)
+      setLocalError(err?.message || 'Não foi possível excluir o desempenho.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const errorMessage = localError || externalError || null
+
+  const alunosSection = loadingStudents ? (
+    <div className="flex items-center justify-center py-6">
+      <div className="w-10 h-10 rounded-full border-4 border-[#6BAED6] border-t-transparent animate-spin" />
+    </div>
+  ) : alunosLista.length === 0 ? (
     <p className="text-sm text-[#01162A]/70">
-      Nenhum estudante disponível para registrar desempenho.
+      {studentsError ?? 'Nenhum estudante disponível para registrar desempenho.'}
     </p>
   ) : (
     alunosLista.map((aluno, index) => {
@@ -135,7 +241,9 @@ function DesempenhoDialog({
             className="overflow-y-auto px-8 py-6 space-y-5"
             onSubmit={(e) => {
               e.preventDefault()
-              handleSave()
+              if (!submitting && !loading) {
+                void handleSave()
+              }
             }}
           >
             {/* Material foi útil */}
@@ -184,19 +292,37 @@ function DesempenhoDialog({
               />
             </div>
 
+            {errorMessage && (
+              <div className="rounded-xl border-2 border-[#EFB4C8] bg-[#EFB4C8]/10 px-4 py-3 text-sm text-[#01162A]">
+                {errorMessage}
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-3 pt-3 pb-2 sticky bottom-0 bg-[#FFFEF1]">
+              {onDelete ? (
+                <button
+                  type="button"
+                  onClick={() => !deleting && void handleDelete()}
+                  className="px-6 py-3 rounded-xl border-2 border-[#EFB4C8] text-[#EFB4C8] font-semibold hover:bg-[#EFB4C8]/10 transition-colors disabled:opacity-50"
+                  disabled={deleting || submitting || loading}
+                >
+                  {deleting ? 'Excluindo...' : 'Excluir registros'}
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={onClose}
-                className="px-6 py-3 rounded-xl border-2 border-[#C5C5C5] text-[#01162A] font-semibold hover:bg-[#C5C5C5]/20 transition-colors"
+                className="px-6 py-3 rounded-xl border-2 border-[#C5C5C5] text-[#01162A] font-semibold hover:bg-[#C5C5C5]/20 transition-colors disabled:opacity-50"
+                disabled={submitting || deleting || loading}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-6 py-3 rounded-xl bg-[#6BAED6] text-white font-semibold hover:bg-[#3B82C8] transition-colors"
+                className="px-6 py-3 rounded-xl bg-[#6BAED6] text-white font-semibold hover:bg-[#3B82C8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={submitting || deleting || loading}
               >
-                Salvar Desempenho
+                {submitting || loading ? 'Salvando...' : 'Salvar Desempenho'}
               </button>
             </div>
           </form>
@@ -218,10 +344,21 @@ export default function AulaDetalhePage() {
   const [loading, setLoading] = useState(true)
   const [studentsLoading, setStudentsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [hasMaterial, setHasMaterial] = useState(false)
-  const [materialData, setMaterialData] = useState<any>(null)
+  const [materialRecords, setMaterialRecords] = useState<MaterialItem[]>([])
+  const [materialLoading, setMaterialLoading] = useState(false)
+  const [materialError, setMaterialError] = useState<string | null>(null)
   const [openDesempenho, setOpenDesempenho] = useState(false)
   const [desempenhoSalvo, setDesempenhoSalvo] = useState<DesempenhoData | null>(null)
+  const [performanceLoading, setPerformanceLoading] = useState(false)
+  const [performanceError, setPerformanceError] = useState<string | null>(null)
+  const [savingPerformance, setSavingPerformance] = useState(false)
+
+  const primaryMaterial = useMemo<MaterialItem | null>(
+    () => (materialRecords.length > 0 ? materialRecords[0] : null),
+    [materialRecords]
+  )
+  const materialData = primaryMaterial
+  const hasMaterial = Boolean(primaryMaterial)
 
   useEffect(() => {
     if (!aulaId) {
@@ -378,41 +515,70 @@ export default function AulaDetalhePage() {
       return
     }
 
-    const materialAccepted = localStorage.getItem(`material:${aulaId}:accepted`)
-    setHasMaterial(!!materialAccepted)
+    let cancelled = false
 
-    if (materialAccepted) {
-      const materialRaw = sessionStorage.getItem(`material:${aulaId}`)
-      if (materialRaw) {
-        try {
-          setMaterialData(JSON.parse(materialRaw))
-        } catch {
-          setMaterialData(null)
-        }
-      }
-
-      const desempenhoRaw = localStorage.getItem(`desempenho:${aulaId}`)
-      if (desempenhoRaw) {
-        try {
-          const parsed = JSON.parse(desempenhoRaw)
+    const loadPerformance = async () => {
+      setPerformanceLoading(true)
+      setPerformanceError(null)
+      try {
+        const performance = await performanceAPI.get(aulaId)
+        if (cancelled) return
+        if (performance) {
           const normalized: DesempenhoData = {
-            materialUtil: parsed.materialUtil || '',
-            observacoes: parsed.observacoes || '',
-            alunos: Array.isArray(parsed.alunos)
-              ? parsed.alunos.map((item: any) => ({
-                  alunoId: String(item.alunoId),
-                  desempenho: Array.isArray(item.desempenho) ? item.desempenho : []
-                }))
-              : []
+            materialUtil: performance.material_util ?? '',
+            observacoes: performance.observacoes ?? '',
+            alunos: (performance.alunos ?? []).map((entry) => ({
+              alunoId: String(entry.aluno_id),
+              desempenho: Array.isArray(entry.desempenho) ? entry.desempenho : []
+            }))
           }
           setDesempenhoSalvo(normalized)
-        } catch {
+        } else {
           setDesempenhoSalvo(null)
         }
+      } catch (err: any) {
+        if (!cancelled) {
+          console.error('❌ Erro ao carregar desempenho salvo:', err)
+          setPerformanceError('Não foi possível carregar o desempenho salvo desta aula.')
+          setDesempenhoSalvo(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setPerformanceLoading(false)
+        }
       }
-    } else {
-      setMaterialData(null)
-      setDesempenhoSalvo(null)
+    }
+
+    const loadMaterial = async () => {
+      setMaterialLoading(true)
+      setMaterialError(null)
+      try {
+        const materials = await materialAPI.listByAula(aulaId)
+        if (cancelled) return
+        setMaterialRecords(materials)
+        if (materials.length > 0) {
+          await loadPerformance()
+        } else {
+          setDesempenhoSalvo(null)
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          console.error('❌ Erro ao carregar materiais da aula:', err)
+          setMaterialError('Não foi possível carregar os materiais aprovados desta aula.')
+          setMaterialRecords([])
+          setDesempenhoSalvo(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setMaterialLoading(false)
+        }
+      }
+    }
+
+    loadMaterial()
+
+    return () => {
+      cancelled = true
     }
   }, [aulaId])
 
@@ -458,20 +624,61 @@ export default function AulaDetalhePage() {
     )
   }
 
-  const handleSaveDesempenho = (data: DesempenhoData) => {
-    if (aulaId) {
-      const normalized: DesempenhoData = {
-        materialUtil: data.materialUtil,
-        observacoes: data.observacoes,
+  const handleSaveDesempenho = async (data: DesempenhoData): Promise<void> => {
+    if (!aulaId) {
+      throw new Error('Aula não encontrada.')
+    }
+    setSavingPerformance(true)
+    setPerformanceError(null)
+    try {
+      const payload = {
+        arrmd_id: aulaId,
+        material_util: data.materialUtil || null,
+        observacoes: data.observacoes || null,
         alunos: data.alunos.map((aluno) => ({
-          alunoId: String(aluno.alunoId),
+          aluno_id: aluno.alunoId,
           desempenho: aluno.desempenho
         }))
       }
-      localStorage.setItem(`desempenho:${aulaId}`, JSON.stringify(normalized))
+      const saved = await performanceAPI.save(payload)
+      const normalized: DesempenhoData = {
+        materialUtil: saved.material_util ?? '',
+        observacoes: saved.observacoes ?? '',
+        alunos: (saved.alunos ?? []).map((entry) => ({
+          alunoId: String(entry.aluno_id),
+          desempenho: Array.isArray(entry.desempenho) ? entry.desempenho : []
+        }))
+      }
       setDesempenhoSalvo(normalized)
+    } catch (err: any) {
+      console.error('❌ Erro ao salvar desempenho:', err)
+      const message = err?.message || 'Não foi possível salvar o desempenho.'
+      setPerformanceError(message)
+      throw err
+    } finally {
+      setSavingPerformance(false)
     }
   }
+
+  const handleDeleteDesempenho = async (): Promise<void> => {
+    if (!aulaId) {
+      throw new Error('Aula não encontrada.')
+    }
+    setSavingPerformance(true)
+    setPerformanceError(null)
+    try {
+      await performanceAPI.delete(aulaId)
+      setDesempenhoSalvo(null)
+    } catch (err: any) {
+      console.error('❌ Erro ao excluir desempenho:', err)
+      const message = err?.message || 'Não foi possível excluir o desempenho.'
+      setPerformanceError(message)
+      throw err
+    } finally {
+      setSavingPerformance(false)
+    }
+  }
+
 
   return (
     <div className="container-page py-4">
@@ -586,7 +793,16 @@ export default function AulaDetalhePage() {
 
             <div className="border-2 border-[#C5C5C5] rounded-3xl p-6 bg-transparent">
               <h2 className="text-xl font-bold text-[#01162A] mb-4">Material</h2>
-              {hasMaterial && materialData ? (
+              {materialError && (
+                <div className="mb-4 rounded-xl border-2 border-[#EFB4C8] bg-[#EFB4C8]/10 px-4 py-3 text-sm text-[#01162A]">
+                  {materialError}
+                </div>
+              )}
+              {materialLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-12 h-12 rounded-full border-4 border-[#6BAED6] border-t-transparent animate-spin" />
+                </div>
+              ) : hasMaterial && materialData ? (
                 <div className="space-y-4">
                   <div className="bg-[#F4D35E]/10 border border-[#F4D35E] rounded-2xl p-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -596,17 +812,22 @@ export default function AulaDetalhePage() {
                       <span className="font-semibold text-[#01162A]">Material criado e aprovado</span>
                     </div>
                     <p className="text-sm text-[#01162A]/70 mb-3">
-                      Persona: {materialData.persona?.label || 'N/A'} — {materialData.persona?.hyperfocus || 'N/A'}
+                      {(() => {
+                        const personaInfo = (materialData as any)?.persona
+                        return `Persona: ${personaInfo?.label ?? 'N/A'} — ${personaInfo?.hyperfocus ?? 'N/A'}`
+                      })()}
                     </p>
-                    <div className="text-sm text-[#01162A]/80">
-                      <div className="mb-2">✓ Recomendações gerais</div>
-                      <div className="mb-2">✓ Roteiro da aula</div>
-                      <div className="mb-2">✓ Resumo do conteúdo</div>
-                      {materialData.exemplos && <div className="mb-2">✓ Exemplos prontos</div>}
-                      {materialData.perguntas && <div className="mb-2">✓ Perguntas para checagem</div>}
+                    <div className="text-sm text-[#01162A]/80 space-y-1">
+                      <div>✓ Fonte: {materialData.source ? materialData.source.toUpperCase() : 'Desconhecida'}</div>
+                      <div>✓ Roteiro e resumo disponíveis</div>
+                      {Boolean((materialData as any)?.exemplos) && <div>✓ Exemplos prontos</div>}
+                      {Boolean((materialData as any)?.perguntas) && <div>✓ Perguntas para checagem</div>}
+                    </div>
+                    <div className="text-xs text-[#01162A]/60 mt-3">
+                      Criado em: {new Date(materialData.created_at).toLocaleString('pt-BR')}
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-3">
                     <button
                       className="flex-1 px-6 py-3 rounded-xl bg-[#6BAED6] text-white font-semibold hover:bg-[#3B82C8] transition-colors"
@@ -622,8 +843,6 @@ export default function AulaDetalhePage() {
                       className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#01162A] font-semibold hover:bg-[#F4D35E]/20 transition-colors"
                       onClick={() => {
                         if (!aulaId) return
-                        sessionStorage.removeItem(`material:${aulaId}`)
-                        localStorage.removeItem(`material:${aulaId}:accepted`)
                         const newParams = buildSearchParams({ _t: Date.now().toString() })
                         router.push(`/aulas/${aulaId}/gerando?${newParams.toString()}`)
                       }}
@@ -652,8 +871,6 @@ export default function AulaDetalhePage() {
                       className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#01162A] font-semibold hover:bg-[#F4D35E]/20 transition-colors"
                       onClick={() => {
                         if (!aulaId) return
-                        sessionStorage.removeItem(`material:${aulaId}`)
-                        localStorage.removeItem(`material:${aulaId}:accepted`)
                         const newParams = buildSearchParams({ _t: Date.now().toString() })
                         router.push(`/aulas/${aulaId}/gerando?${newParams.toString()}`)
                       }}
@@ -661,7 +878,7 @@ export default function AulaDetalhePage() {
                       Editar
                     </button>
                   </div>
-            </div>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <p className="text-[#F4D35E] font-medium mb-6">
@@ -672,7 +889,8 @@ export default function AulaDetalhePage() {
               onClick={() => {
                         if (!aulaId) return
                         sessionStorage.removeItem(`material:${aulaId}`)
-                        localStorage.removeItem(`material:${aulaId}:accepted`)
+                        sessionStorage.removeItem(`material:${aulaId}`)
+                        sessionStorage.removeItem(`material:${aulaId}`)
                         const newParams = buildSearchParams({ _t: Date.now().toString() })
                         router.push(`/aulas/${aulaId}/gerando?${newParams.toString()}`)
                     }}
@@ -700,7 +918,16 @@ export default function AulaDetalhePage() {
               )}
               
               <h2 className="text-xl font-bold text-[#01162A] mb-4">Desempenho</h2>
-              {desempenhoSalvo ? (
+              {performanceError && (
+                <div className="mb-3 rounded-xl border-2 border-[#EFB4C8] bg-[#EFB4C8]/10 px-4 py-3 text-sm text-[#01162A]">
+                  {performanceError}
+                </div>
+              )}
+              {performanceLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <div className="w-10 h-10 rounded-full border-4 border-[#6BAED6] border-t-transparent animate-spin" />
+                </div>
+              ) : desempenhoSalvo ? (
                 <div className="space-y-4">
                   <div className="bg-[#6BAED6]/10 border border-[#6BAED6] rounded-2xl p-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -723,10 +950,10 @@ export default function AulaDetalhePage() {
                   </div>
                   <button
                     className="w-full px-6 py-3 rounded-xl border-2 border-[#6BAED6] text-[#01162A] font-semibold hover:bg-[#6BAED6]/10 transition-colors"
-                    onClick={() => setOpenDesempenho(true)}
-                    disabled={!hasMaterial}
+                    onClick={() => !savingPerformance && setOpenDesempenho(true)}
+                    disabled={!hasMaterial || savingPerformance}
                   >
-                    Editar Desempenho
+                    {savingPerformance ? 'Aguarde...' : 'Editar Desempenho'}
                   </button>
                 </div>
               ) : (
@@ -740,10 +967,10 @@ export default function AulaDetalhePage() {
                         ? 'bg-[#6BAED6] text-white hover:bg-[#3B82C8]' 
                         : 'bg-[#C5C5C5]/50 text-[#01162A]/50 cursor-not-allowed'
                     }`}
-                    onClick={() => hasMaterial && setOpenDesempenho(true)}
-                    disabled={!hasMaterial}
+                    onClick={() => hasMaterial && !savingPerformance && setOpenDesempenho(true)}
+                    disabled={!hasMaterial || savingPerformance}
                   >
-                    Registrar Desempenho
+                    {savingPerformance ? 'Salvando...' : 'Registrar Desempenho'}
                   </button>
                 </div>
               )}
@@ -756,7 +983,12 @@ export default function AulaDetalhePage() {
         open={openDesempenho}
         onClose={() => setOpenDesempenho(false)}
         onSave={handleSaveDesempenho}
+        turmaId={aula?.turma_id ?? null}
         students={students.map((student) => ({ id: student.id, nome: student.nome }))}
+        initialData={desempenhoSalvo}
+        onDelete={desempenhoSalvo ? handleDeleteDesempenho : undefined}
+        externalError={performanceError}
+        loading={savingPerformance}
       />
     </div>
   )

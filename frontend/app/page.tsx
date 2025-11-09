@@ -147,8 +147,8 @@ export default function AulasPage() {
                     <div className="px-8 pb-8 pt-4 bg-[#FFFEF1]">
                       {turma.alunos && turma.alunos.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {turma.alunos.map((a) => (
-                            <StudentCard key={a.id} id={a.id} name={a.nome} />
+                          {turma.alunos.map((a, index) => (
+                            <StudentCard key={a.id} id={a.id} name={a.nome} order={index} />
                           ))}
                         </div>
                       ) : (
