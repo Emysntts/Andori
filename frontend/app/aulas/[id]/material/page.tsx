@@ -35,30 +35,30 @@ function FeedbackModal({
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg border border-neutral-200">
-          <div className="px-6 py-4 border-b border-neutral-200 text-xl font-semibold">
-            Como o material pode melhorar?
+        <div className="w-full max-w-2xl bg-[#FFFEF1] rounded-3xl border-2 border-[#6BAED6]">
+          <div className="px-8 py-6 border-b-2 border-[#C5C5C5]">
+            <h2 className="text-2xl font-bold text-[#01162A]">Como o material pode melhorar?</h2>
           </div>
-          <div className="p-6 space-y-4">
+          <div className="p-8 space-y-5">
             <textarea
               rows={5}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-300"
+              className="w-full rounded-xl border-2 border-[#C5C5C5] px-4 py-3 focus:outline-none focus:border-[#6BAED6] bg-transparent text-[#01162A] resize-none placeholder:text-[#C5C5C5]"
               placeholder="ex: dar mais exemplos locais, simplificar a linguagem..."
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
             <div className="flex items-center justify-end gap-3">
               <button
-                className="px-3 py-2 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-50"
+                className="px-6 py-3 rounded-xl border-2 border-[#C5C5C5] text-[#01162A] font-semibold hover:bg-[#C5C5C5]/20 transition-colors"
                 onClick={onCancel}
               >
-                cancelar
+                Cancelar
               </button>
               <button
-                className="px-4 py-2 rounded-lg border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700"
+                className="px-6 py-3 rounded-xl bg-[#6BAED6] text-white font-semibold hover:bg-[#3B82C8] transition-colors"
                 onClick={() => onConfirm(text)}
               >
-                gerar material
+                Gerar Material
               </button>
             </div>
           </div>
@@ -111,7 +111,7 @@ export default function MaterialGeradoPage() {
   function List({ items }: { items: string[] | undefined | null }) {
     if (!items || items.length === 0) return null
     return (
-      <ul className="list-disc pl-6 space-y-1 text-neutral-800">
+      <ul className="list-disc pl-6 space-y-2 text-[#01162A]">
         {items.map((it, idx) => (
           <li key={idx}>{it}</li>
         ))}
@@ -120,56 +120,89 @@ export default function MaterialGeradoPage() {
   }
 
   return (
-    <div>
-      <Tabs
-        tabs={[
-          { href: '/', label: 'turmas' },
-          { href: '/aulas', label: 'aulas', active: true }
-        ]}
-      />
-
-      <div className="space-y-6">
-        <div className="text-2xl font-semibold">{assunto}</div>
-        <div className="text-sm text-neutral-600">
-          Persona: {material.persona.label} — hiperfoco em {material.persona.hyperfocus}
+    <div className="container-page py-4">
+      <div className="border-2 border-[#F4D35E] rounded-3xl p-8 bg-[#FFFEF1]">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-[#01162A] font-semibold mb-6 hover:text-[#F4D35E] transition-colors"
+        >
+          <svg 
+            className="w-5 h-5" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M15 19l-7-7 7-7" 
+            />
+          </svg>
+          Voltar
+        </button>
+        
+        <div className="flex items-start justify-between mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-[#01162A] mb-2">{assunto}</h1>
+            <p className="text-sm text-[#01162A]/70">
+              Persona: {material.persona.label} — hiperfoco em {material.persona.hyperfocus}
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#F4D35E] font-semibold hover:bg-[#F4D35E]/10 transition-colors"
+              onClick={() => setOpenFeedback(true)}
+            >
+              editar
+            </button>
+            <button
+              className="px-6 py-3 rounded-xl border-2 border-[#EFB4C8] text-[#EFB4C8] font-semibold hover:bg-[#EFB4C8]/10 transition-colors"
+              onClick={() => {
+                const id = route?.id
+                if (id) {
+                  // Limpar completamente o material
+                  localStorage.removeItem(`material:${id}:accepted`)
+                  sessionStorage.removeItem(`material:${id}`)
+                  // Adicionar parâmetro para forçar refresh na página da aula
+                  router.push(`/aulas/${id}?refresh=${Date.now()}`)
+                }
+              }}
+            >
+              excluir
+            </button>
+          </div>
         </div>
 
-        <section className="space-y-4">
-          <div className="card p-5 bg-neutral-50">{material.recomendacoes}</div>
-          <div className="card p-5 bg-neutral-50 whitespace-pre-line">
-            {material.roteiro}
+        <div className="space-y-6">
+          <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent min-h-[200px]">
+            <h3 className="font-bold text-2xl text-[#01162A] mb-4 text-center">Recomendações gerais</h3>
+            <p className="text-[#01162A] whitespace-pre-line leading-relaxed">{material.recomendacoes}</p>
           </div>
-          <div className="card p-5 bg-neutral-50">{material.resumo}</div>
+          
+          <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent min-h-[300px]">
+            <h3 className="font-bold text-2xl text-[#01162A] mb-4 text-center">Roteiro da aula</h3>
+            <p className="text-[#01162A] whitespace-pre-line leading-relaxed">{material.roteiro}</p>
+          </div>
+          
+          <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent min-h-[250px]">
+            <h3 className="font-bold text-2xl text-[#01162A] mb-4 text-center">Resumo do conteúdo</h3>
+            <p className="text-[#01162A] whitespace-pre-line leading-relaxed">{material.resumo}</p>
+          </div>
+          
           {material.exemplos && (
-            <div className="card p-5 bg-neutral-50">
-              <div className="font-medium mb-2">Exemplos prontos para usar em aula</div>
+            <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent">
+              <h3 className="font-bold text-2xl text-[#01162A] mb-4 text-center">Exemplos prontos para usar em aula</h3>
               <List items={material.exemplos} />
             </div>
           )}
+          
           {material.perguntas && (
-            <div className="card p-5 bg-neutral-50">
-              <div className="font-medium mb-2">Perguntas para checagem</div>
+            <div className="border-2 border-[#01162A] rounded-[2.5rem] p-8 bg-transparent">
+              <h3 className="font-bold text-2xl text-[#01162A] mb-4 text-center">Perguntas para checagem</h3>
               <List items={material.perguntas} />
             </div>
           )}
-        </section>
-
-        <div className="flex items-center justify-end gap-3">
-          <button
-            className="px-4 py-2 rounded-lg border border-red-500 text-red-600 hover:bg-red-50"
-            onClick={() => setOpenFeedback(true)}
-          >
-            gerar novamente
-          </button>
-          <button
-            className="px-4 py-2 rounded-lg border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700"
-            onClick={() => {
-              const search = params.toString()
-              router.push(`../?${search}`)
-            }}
-          >
-            Aceitar material
-          </button>
         </div>
       </div>
 

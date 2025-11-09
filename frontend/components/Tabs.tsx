@@ -16,20 +16,22 @@ export default function Tabs({ tabs }: { tabs: Tab[] }) {
 
   function colorClasses(label: string, active: boolean) {
     const name = label.toLowerCase()
-    if (name.includes('aula')) {
+    if (name.includes('turma')) {
       return clsx(
-        'bg-rose-300 text-rose-900 border-rose-400',
-        active && 'bg-rose-400 text-white'
+        'bg-[#EFB4C8] border-[#EFB4C8]',
+        active && 'text-[#FFFEF1]',
+        !active && 'text-[#FFFEF1] opacity-60'
       )
     }
     return clsx(
-      'bg-[#2A56A4] text-white border-[#234A8C]',
-      active && 'bg-[#254E93] text-white'
+      'bg-[#6BAED6] border-[#6BAED6]',
+      active && 'text-[#FFFEF1]',
+      !active && 'text-[#FFFEF1] opacity-60'
     )
   }
 
   return (
-    <div className="flex gap-2 mb-0 border-b border-neutral-200">
+    <div className="flex gap-0 mb-0">
       {tabs.map((t) => {
         const active = isActive(t)
         return (
@@ -38,13 +40,13 @@ export default function Tabs({ tabs }: { tabs: Tab[] }) {
             href={t.href}
             aria-current={active ? 'page' : undefined}
             className={clsx(
-              'px-6 py-2 -mb-px rounded-t-2xl border',
+              'px-14 py-4 -mb-px rounded-t-[2rem] border-2 font-bold text-xl capitalize min-w-[180px] text-center',
               'transition-colors',
               colorClasses(t.label, active),
-              active ? 'relative z-10' : 'opacity-90 hover:opacity-100'
+              active ? 'relative z-10' : 'hover:opacity-100'
             )}
           >
-            {t.label}
+            {t.label.charAt(0).toUpperCase() + t.label.slice(1)}
           </Link>
         )
       })}

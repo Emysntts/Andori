@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Tabs from '@components/Tabs'
 import { useRouter } from 'next/navigation'
 import Calendar from '@components/Calendar'
@@ -46,12 +46,12 @@ function CreateAulaModal({
         aria-modal="true"
         className="absolute inset-0 flex items-center justify-center p-4"
       >
-        <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg border border-neutral-200">
-          <div className="px-6 py-4 border-b border-neutral-200">
-            <div className="text-xl font-semibold">Criar aula</div>
+        <div className="w-full max-w-2xl bg-[#FFFEF1] rounded-3xl border-2 border-[#6BAED6]">
+          <div className="px-8 py-6 border-b-2 border-[#C5C5C5]">
+            <h2 className="text-2xl font-bold text-[#01162A]">Criar Aula</h2>
           </div>
           <form
-            className="p-6 space-y-4"
+            className="p-8 space-y-5"
             onSubmit={(e) => {
               e.preventDefault()
               onCreate(form)
@@ -59,12 +59,12 @@ function CreateAulaModal({
             }}
           >
             <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-700">
-                assunto da aula
+              <label className="text-sm font-semibold text-[#01162A]">
+                Assunto da Aula
               </label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                className="w-full rounded-xl border-2 border-[#C5C5C5] px-4 py-3 focus:outline-none focus:border-[#6BAED6] bg-transparent text-[#01162A]"
                 value={form.assunto}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, assunto: e.target.value }))
@@ -75,13 +75,13 @@ function CreateAulaModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-neutral-700">
-                  turma
+                <label className="text-sm font-semibold text-[#01162A]">
+                  Turma
                 </label>
                 <input
                   type="text"
                   placeholder="ex: 4º ano A"
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                  className="w-full rounded-xl border-2 border-[#C5C5C5] px-4 py-3 focus:outline-none focus:border-[#6BAED6] bg-transparent text-[#01162A] placeholder:text-[#C5C5C5]"
                   value={form.turma}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, turma: e.target.value }))
@@ -90,12 +90,12 @@ function CreateAulaModal({
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-neutral-700">
-                  data
+                <label className="text-sm font-semibold text-[#01162A]">
+                  Data
                 </label>
                 <input
                   type="date"
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                  className="w-full rounded-xl border-2 border-[#C5C5C5] px-4 py-3 focus:outline-none focus:border-[#6BAED6] bg-transparent text-[#01162A]"
                   value={form.data}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, data: e.target.value }))
@@ -106,12 +106,12 @@ function CreateAulaModal({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-700">
-                descrição
+              <label className="text-sm font-semibold text-[#01162A]">
+                Descrição
               </label>
               <textarea
                 rows={4}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                className="w-full rounded-xl border-2 border-[#C5C5C5] px-4 py-3 focus:outline-none focus:border-[#6BAED6] bg-transparent text-[#01162A] resize-none"
                 value={form.descricao}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, descricao: e.target.value }))
@@ -120,8 +120,8 @@ function CreateAulaModal({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-700">
-                upload arquivo
+              <label className="text-sm font-semibold text-[#01162A]">
+                Upload Arquivo
               </label>
               <input
                 type="file"
@@ -131,23 +131,23 @@ function CreateAulaModal({
                     arquivo: e.target.files?.[0] ?? null
                   }))
                 }
-                className="block w-full text-sm text-neutral-700 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-brand-700 hover:file:bg-brand-100"
+                className="block w-full text-sm text-[#01162A] file:mr-4 file:rounded-xl file:border-2 file:border-[#6BAED6] file:bg-transparent file:px-4 file:py-2 file:text-[#6BAED6] file:font-semibold hover:file:bg-[#6BAED6] hover:file:text-white file:transition-colors"
               />
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex items-center justify-end gap-3 pt-4">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3 py-2 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-50"
+                className="px-6 py-3 rounded-xl border-2 border-[#C5C5C5] text-[#01162A] font-semibold hover:bg-[#C5C5C5]/20 transition-colors"
               >
-                cancelar
+                Cancelar
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-lg border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700"
+                className="px-6 py-3 rounded-xl bg-[#6BAED6] text-white font-semibold hover:bg-[#3B82C8] transition-colors"
               >
-                criar
+                Criar
               </button>
             </div>
           </form>
@@ -159,24 +159,11 @@ function CreateAulaModal({
 export default function AulasPage() {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [aulas, setAulas] = useState<Aula[]>([
     { id: 'a1', titulo: 'Aula de Capitalismo', data: '17/06' },
     { id: 'a2', titulo: 'Aula de História do Brasil', data: '20/06' }
   ])
-
-  useEffect(() => {
-    const docEl = document.documentElement
-    const previousPanel = getComputedStyle(docEl).getPropertyValue('--panel-bg')
-    const aulasPanel = '#f4a3ba' // pink for Aulas container
-    docEl.style.setProperty('--panel-bg', aulasPanel)
-    return () => {
-      if (previousPanel) {
-        docEl.style.setProperty('--panel-bg', previousPanel)
-      } else {
-        docEl.style.removeProperty('--panel-bg')
-      }
-    }
-  }, [])
 
   const nextId = useMemo(
     () => `a${(aulas.length + 1).toString()}`,
@@ -188,41 +175,48 @@ export default function AulasPage() {
       <Tabs
         tabs={[
           { href: '/', label: 'turmas' },
-          { href: '/aulas', label: 'aulas', active: true }
+          { href: '/aulas', label: 'aulas' }
         ]}
       />
 
-      <div className="panel rounded-tl-none p-5 -mt-px">
-        <div className="flex items-center justify-between mb-5">
-          <div className="text-lg font-semibold text-white">Aulas</div>
+      <section className="panel-blue rounded-tl-none p-8 -mt-px">
+        <div className="flex items-center justify-end mb-6">
           <button
-            className="px-3 py-2 rounded-lg border border-white/60 text-white hover:bg-white/10"
+            className="px-6 py-3 rounded-2xl bg-[#6BAED6] text-white font-semibold hover:bg-[#3B82C8] transition-colors"
             onClick={() => setIsOpen(true)}
           >
-            add aula
+            + Adicionar Aula
           </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-1">
-            <Calendar />
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 space-y-4">
+            <Calendar value={selectedDate} onChange={setSelectedDate} aulas={aulas} />
           </div>
-          <div className="md:col-span-2 space-y-4">
+          
+          <div className="lg:col-span-2 space-y-4">
             {aulas.map((a) => (
-              <div key={a.id} className="bg-white border border-neutral-200 rounded-2xl p-4 shadow-sm">
+              <div 
+                key={a.id} 
+                className="border-2 border-[#6BAED6] rounded-3xl p-6 bg-transparent transition-colors"
+              >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium text-[#01162A]">{a.titulo}</div>
-                    <div className="text-neutral-500 text-sm">{a.data}</div>
+                    <h3 className="font-semibold text-xl text-[#01162A] mb-1">{a.titulo}</h3>
+                    <p className="text-[#01162A] text-sm">{a.data}</p>
                   </div>
-                  <button className="px-3 py-1.5 rounded-lg border border-neutral-300 text-sm hover:bg-neutral-50">
-                    abrir
+                  <button 
+                    className="px-5 py-2.5 rounded-xl bg-[#6BAED6] text-white font-medium hover:bg-[#3B82C8] transition-colors"
+                    onClick={() => router.push(`/aulas/${a.id}`)}
+                  >
+                    Abrir
                   </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
       <CreateAulaModal
         open={isOpen}
