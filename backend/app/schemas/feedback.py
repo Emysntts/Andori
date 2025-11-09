@@ -27,6 +27,13 @@ class StudentFeedback(BaseModel):
     feedback: str
 
 
+class StudentFeedbackParsed(StudentFeedback):
+    desempenho: List[str] = []
+    material_id: Optional[UUID] = None
+    material_util: Optional[str] = None
+    observacoes: Optional[str] = None
+
+
 class StudentPerformanceEntry(BaseModel):
     aluno_id: UUID
     desempenho: List[str]

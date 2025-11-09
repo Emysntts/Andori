@@ -4,6 +4,8 @@ import Image from 'next/image'
 import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
+import Tabs from '@components/Tabs'
+
 import {
   aulasAPI,
   studentsAPI,
@@ -14,17 +16,7 @@ import {
   type Aluno,
   type MaterialItem
 } from '@lib/api'
-
-const profileImages = ['/pfb.png', '/pfp.png', '/pfy.png', '/pfby.png']
-
-const selectProfileImage = (identifier: string | number): string => {
-  const str = String(identifier)
-  let hash = 0
-  for (let i = 0; i < str.length; i += 1) {
-    hash = (hash + str.charCodeAt(i)) % profileImages.length
-  }
-  return profileImages[Math.abs(hash) % profileImages.length]
-}
+import { selectProfileAvatar } from '@lib/avatar'
 
 type DesempenhoAluno = {
   alunoId: string
@@ -537,8 +529,13 @@ export default function AulaDetalhePage() {
           setDesempenhoSalvo(null)
         }
       } catch (err: any) {
-        if (!cancelled) {
-          console.error('❌ Erro ao carregar desempenho salvo:', err)
+        if (cancelled) return
+        console.error('❌ Erro ao carregar desempenho salvo:', err)
+        const is404 = err?.message?.includes('404')
+        if (is404) {
+          setDesempenhoSalvo(null)
+          setPerformanceError(null)
+        } else {
           setPerformanceError('Não foi possível carregar o desempenho salvo desta aula.')
           setDesempenhoSalvo(null)
         }
@@ -560,6 +557,7 @@ export default function AulaDetalhePage() {
           await loadPerformance()
         } else {
           setDesempenhoSalvo(null)
+          setPerformanceError(null)
         }
       } catch (err: any) {
         if (!cancelled) {
@@ -601,8 +599,19 @@ export default function AulaDetalhePage() {
 
   if (loading) {
     return (
-      <div className="container-page py-20 flex items-center justify-center">
-        <div className="w-14 h-14 rounded-full border-4 border-[#6BAED6] border-t-transparent animate-spin" />
+      <div>
+        <Tabs
+          tabs={[
+            { href: '/', label: 'turmas' },
+            { href: '/aulas', label: 'aulas' }
+          ]}
+        />
+
+        <section className="panel-blue rounded-tl-none p-8 -mt-px space-y-8">
+          <div className="rounded-3xl p-8 bg-[#FFFEF1] min-h-[400px] flex items-center justify-center">
+            <div className="w-14 h-14 rounded-full border-4 border-[#6BAED6] border-t-transparent animate-spin" />
+          </div>
+        </section>
       </div>
     )
   }
@@ -681,8 +690,16 @@ export default function AulaDetalhePage() {
 
 
   return (
-    <div className="container-page py-4">
-      <div className="border-2 border-[#F4D35E] rounded-3xl p-8 bg-[#FFFEF1]">
+    <div>
+      <Tabs
+        tabs={[
+          { href: '/', label: 'turmas' },
+          { href: '/aulas', label: 'aulas' }
+        ]}
+      />
+
+      <section className="panel-blue rounded-tl-none p-8 -mt-px space-y-8">
+      <div className="rounded-3xl p-8 bg-[#FFFEF1]">
         <button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-[#01162A] font-semibold mb-6 hover:text-[#F4D35E] transition-colors"
@@ -749,7 +766,7 @@ export default function AulaDetalhePage() {
                   students.map((student, index) => {
                     const colors = ['#EFB4C8', '#6BAED6', '#3B82C8']
                     const borderColor = colors[index % colors.length]
-                    const profileSrc = selectProfileImage(student.id ?? index)
+                      const profileSrc = selectProfileAvatar(student.id ?? index)
                     return (
                       <button
                         key={student.id}
@@ -811,14 +828,7 @@ export default function AulaDetalhePage() {
                       </svg>
                       <span className="font-semibold text-[#01162A]">Material criado e aprovado</span>
                     </div>
-                    <p className="text-sm text-[#01162A]/70 mb-3">
-                      {(() => {
-                        const personaInfo = (materialData as any)?.persona
-                        return `Persona: ${personaInfo?.label ?? 'N/A'} — ${personaInfo?.hyperfocus ?? 'N/A'}`
-                      })()}
-                    </p>
                     <div className="text-sm text-[#01162A]/80 space-y-1">
-                      <div>✓ Fonte: {materialData.source ? materialData.source.toUpperCase() : 'Desconhecida'}</div>
                       <div>✓ Roteiro e resumo disponíveis</div>
                       {Boolean((materialData as any)?.exemplos) && <div>✓ Exemplos prontos</div>}
                       {Boolean((materialData as any)?.perguntas) && <div>✓ Perguntas para checagem</div>}
@@ -839,16 +849,6 @@ export default function AulaDetalhePage() {
                     >
                       Ver Material Completo
                     </button>
-                    <button
-                      className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#01162A] font-semibold hover:bg-[#F4D35E]/20 transition-colors"
-                      onClick={() => {
-                        if (!aulaId) return
-                        const newParams = buildSearchParams({ _t: Date.now().toString() })
-                        router.push(`/aulas/${aulaId}/gerando?${newParams.toString()}`)
-                      }}
-                    >
-                      Editar
-                    </button>
                   </div>
                 </div>
               ) : hasMaterial ? (
@@ -866,16 +866,6 @@ export default function AulaDetalhePage() {
                       }}
                     >
                       Ver Material
-                    </button>
-                    <button
-                      className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#01162A] font-semibold hover:bg-[#F4D35E]/20 transition-colors"
-                      onClick={() => {
-                        if (!aulaId) return
-                        const newParams = buildSearchParams({ _t: Date.now().toString() })
-                        router.push(`/aulas/${aulaId}/gerando?${newParams.toString()}`)
-                      }}
-                    >
-                      Editar
                     </button>
                   </div>
                 </div>
@@ -990,6 +980,7 @@ export default function AulaDetalhePage() {
         externalError={performanceError}
         loading={savingPerformance}
       />
+      </section>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 
-import { selectTurmaAvatar } from '@lib/avatar'
+import { selectProfileAvatar } from '@lib/avatar'
 
 export default function StudentCard({
   id,
@@ -14,9 +14,8 @@ export default function StudentCard({
   avatarUrl?: string | null
   order?: number
 }) {
-  const fallbackKey = order ?? id
-  const fallbackAvatar = selectTurmaAvatar(fallbackKey)
-  const resolvedAvatar = avatarUrl ?? fallbackAvatar
+  const fallbackKey = id ?? order ?? null
+  const resolvedAvatar = avatarUrl ?? selectProfileAvatar(fallbackKey)
 
   return (
     <Link

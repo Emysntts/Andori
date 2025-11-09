@@ -15,7 +15,7 @@ export const metadata = {
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  const professorAvatar = '/pfp3.png'
+  const professorAvatar = '/perfil1.png'
 
   return (
     <html lang="pt-BR">
@@ -33,8 +33,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </div>
             <div className="flex items-center gap-3 bg-[#B8D9F0] rounded-2xl px-6 py-3">
               <div className="text-left">
-                <div className="text-[#01162A] font-bold text-lg">Edson</div>
-                <div className="text-[#01162A] text-sm">Professor</div>
+                <div className="text-[#01162A] font-bold text-lg">Juliana</div>
+                <div className="text-[#01162A] text-sm">Professora</div>
               </div>
               <div className="relative w-14 h-14 rounded-full overflow-hidden flex-shrink-0">
                 <Image

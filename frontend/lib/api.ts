@@ -450,3 +450,44 @@ export const performanceAPI = {
   }
 }
 
+export type StudentFeedbackItem = {
+  id: string
+  id_arrmd: string
+  aluno_id: string
+  feedback: string
+  desempenho: string[]
+  material_id?: string | null
+  material_util?: string | null
+  observacoes?: string | null
+}
+
+export const feedbackAPI = {
+  async listByAluno(
+    alunoId: string,
+    params: { limit?: number; offset?: number } = {}
+  ): Promise<{ items: StudentFeedbackItem[]; limit: number; offset: number }> {
+    const searchParams = new URLSearchParams()
+    if (typeof params.limit === 'number') searchParams.set('limit', String(params.limit))
+    if (typeof params.offset === 'number') searchParams.set('offset', String(params.offset))
+
+    const url = `${API_BASE_URL}/api/v1/feedback/student/${alunoId}${
+      searchParams.toString() ? `?${searchParams.toString()}` : ''
+    }`
+    console.log('🌐 GET (feedback by aluno)', url)
+    const response = await fetch(url, { cache: 'no-store' })
+    console.log(`📊 Status (feedback by aluno): ${response.status} ${response.statusText}`)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Erro na resposta (feedback by aluno):', errorText)
+      throw new Error(`${response.status}: ${errorText || response.statusText}`)
+    }
+    const data = await response.json()
+    const items = Array.isArray(data?.items) ? (data.items as StudentFeedbackItem[]) : []
+    return {
+      items,
+      limit: typeof data?.limit === 'number' ? data.limit : params.limit ?? 100,
+      offset: typeof data?.offset === 'number' ? data.offset : params.offset ?? 0
+    }
+  }
+}
+

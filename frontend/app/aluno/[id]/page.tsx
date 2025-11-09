@@ -11,15 +11,19 @@ import {
   descriptionAPI,
   recommendationAPI,
   studentsAPI,
+  feedbackAPI,
   type Aula,
   type RecommendationContent,
-  type StudentProfile
+  type StudentProfile,
+  type StudentFeedbackItem
 } from '@lib/api'
+import { selectProfileAvatar } from '@lib/avatar'
 
 type Props = { params: { id: string } }
 
 type DesempenhoRegistro = {
   desempenho: string[]
+  materialId?: string
   materialUtil?: string
   observacoes?: string
 }
@@ -38,15 +42,27 @@ const materialUtilLabel: Record<string, { label: string; color: string }> = {
   pouco_util: { label: 'material ruim', color: '#EFB4C8' }
 }
 
-const profileImages = ['/pfb.png', '/pfp.png', '/pfy.png', '/pfby.png']
+const getDesempenhoConfig = (valor: string) => opcoesDesempenho.find((o) => o.value === valor)
 
-const selectProfileImage = (identifier: string | number): string => {
-  const str = String(identifier)
-  let hash = 0
-  for (let i = 0; i < str.length; i += 1) {
-    hash = (hash + str.charCodeAt(i)) % profileImages.length
-  }
-  return profileImages[Math.abs(hash) % profileImages.length]
+const renderDesempenhoBadges = (valores: string[]) => {
+  if (!valores || valores.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-2">
+      {valores.map((valor, idx) => {
+        const config = getDesempenhoConfig(valor)
+        if (!config) return null
+        return (
+          <span
+            key={`${valor}-${idx}`}
+            className="px-3 py-1 rounded-full text-xs font-semibold text-white shadow-sm"
+            style={{ backgroundColor: config.color }}
+          >
+            {config.label}
+          </span>
+        )
+      })}
+    </div>
+  )
 }
 const normalizeAula = (raw: any): Aula => {
   const uploadRaw = raw?.upload_arquivo
@@ -137,6 +153,9 @@ export default function AlunoPage({ params }: Props) {
   const [loadingAulas, setLoadingAulas] = useState(false)
 
   const [desempenhoMap, setDesempenhoMap] = useState<Record<string, DesempenhoRegistro>>({})
+  const [feedbackItems, setFeedbackItems] = useState<StudentFeedbackItem[]>([])
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
   const [recommendation, setRecommendation] = useState<RecommendationContent | null>(null)
   const [recommendationError, setRecommendationError] = useState<string | null>(null)
   const [loadingRecommendation, setLoadingRecommendation] = useState(false)
@@ -266,27 +285,49 @@ export default function AlunoPage({ params }: Props) {
   }, [alunoId, student])
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    const map: Record<string, DesempenhoRegistro> = {}
-    aulasTurma.forEach((aula) => {
+    let cancelled = false
+    const loadFeedback = async () => {
+      setFeedbackLoading(true)
+      setFeedbackError(null)
       try {
-        const raw = localStorage.getItem(`desempenho:${aula.id}`)
-        if (!raw) return
-        const parsed = JSON.parse(raw)
-        map[aula.id] = {
-          desempenho: Array.isArray(parsed.alunos)
-            ? parsed.alunos
-                .find((entry: any) => String(entry.alunoId) === alunoId)?.desempenho ?? []
-            : [],
-          materialUtil: parsed.materialUtil ?? undefined,
-          observacoes: parsed.observacoes ?? undefined
+        console.log('▶️ Carregando feedbacks do aluno', alunoId)
+        const response = await feedbackAPI.listByAluno(alunoId)
+        if (cancelled) return
+        setFeedbackItems(response.items ?? [])
+      } catch (err: any) {
+        if (!cancelled) {
+          console.error('❌ Erro ao carregar feedbacks do aluno:', err)
+          const message = err?.message?.includes('404')
+            ? 'Nenhum feedback registrado para este aluno.'
+            : 'Não foi possível carregar os feedbacks do aluno.'
+          setFeedbackError(message)
+          setFeedbackItems([])
         }
-      } catch (err) {
-        console.warn('⚠️ Não foi possível ler desempenho local da aula', aula.id, err)
+      } finally {
+        if (!cancelled) {
+          setFeedbackLoading(false)
+        }
+      }
+    }
+    loadFeedback()
+    return () => {
+      cancelled = true
+    }
+  }, [alunoId])
+
+  useEffect(() => {
+    const map: Record<string, DesempenhoRegistro> = {}
+    feedbackItems.forEach((item) => {
+      map[item.id_arrmd] = {
+        desempenho: Array.isArray(item.desempenho) ? item.desempenho : []
+        ,
+        materialId: item.material_id ?? undefined,
+        materialUtil: item.material_util ?? undefined,
+        observacoes: item.observacoes ?? undefined
       }
     })
     setDesempenhoMap(map)
-  }, [aulasTurma, alunoId])
+  }, [feedbackItems])
 
   const estatisticas = useMemo(() => {
     const contagem: Record<string, number> = {
@@ -321,6 +362,28 @@ export default function AlunoPage({ params }: Props) {
       })
       .filter((item): item is { data: string; valor: number; desempenho: string[] } => item !== null)
   }, [aulasTurma, desempenhoMap])
+
+  const destaqueDesempenho = useMemo(() => {
+    const entries = Object.entries(estatisticas)
+    if (entries.length === 0) return null
+    let topKey = ''
+    let topValue = 0
+    entries.forEach(([key, value]) => {
+      if (value > topValue) {
+        topKey = key
+        topValue = value
+      }
+    })
+    if (topValue === 0 || !topKey) return null
+    const opcao = opcoesDesempenho.find((o) => o.value === topKey)
+    if (!opcao) return null
+    return {
+      value: topKey,
+      label: opcao.label,
+      color: opcao.color,
+      quantidade: topValue
+    }
+  }, [estatisticas])
 
   const handleOpenDescricaoDialog = () => {
     setDescricaoDraft(descricao ?? '')
@@ -407,13 +470,13 @@ export default function AlunoPage({ params }: Props) {
           Voltar
         </button>
 
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Info do Aluno */}
           <div className="border-2 border-[#C5C5C5] rounded-3xl p-6 bg-transparent">
               <div className="flex flex-col lg:flex-row lg:items-start gap-5">
               <div className="relative w-32 h-32 rounded-full overflow-hidden flex-shrink-0">
                 <Image
-                  src={selectProfileImage(student.id)}
+                  src={selectProfileAvatar(student.id)}
                   alt={`Foto de ${alunoNome}`}
                   fill
                   className="object-cover"
@@ -515,55 +578,80 @@ export default function AlunoPage({ params }: Props) {
           {/* Desempenho na disciplina */}
           <div>
             <h2 className="text-2xl font-bold text-[#01162A] mb-4">Desempenho na disciplina</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="border-2 border-[#C5C5C5] rounded-3xl p-6 bg-transparent">
-                <div className="grid grid-cols-2 gap-4">
-                  {opcoesDesempenho.map((opcao) => (
-                    <div key={opcao.value} className="flex items-center gap-3">
-                      <span
-                        className="inline-block w-8 h-8 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: opcao.color }}
-                      />
-                      <span className="font-medium text-[#01162A]">
-                        {estatisticas[opcao.value]} {opcao.label.toLowerCase()}
-                      </span>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-8">
+              <div className="border-2 border-[#C5C5C5] rounded-3xl p-5 md:p-6 bg-transparent space-y-5 md:col-span-2">
+                {feedbackLoading ? (
+                  <div className="h-[120px] flex items-center justify-center text-sm text-[#01162A]/60">
+                    Carregando feedbacks...
+                  </div>
+                ) : feedbackError ? (
+                  <div className="rounded-2xl border border-[#EFB4C8] bg-[#EFB4C8]/10 px-4 py-3 text-sm text-[#01162A]">
+                    {feedbackError}
+                  </div>
+                ) : (
+                  <>
+                    {destaqueDesempenho ? (
+                      <div className="rounded-2xl border-2 border-[#6BAED6] bg-[#6BAED6]/10 px-4 py-3 space-y-2">
+                        <p className="text-xs uppercase tracking-widest text-[#01162A]/50 font-semibold">
+                          Destaque recente
+                        </p>
+                        {renderDesempenhoBadges([destaqueDesempenho.value])}
+                        <p className="text-sm text-[#01162A]">
+                          {destaqueDesempenho.quantidade} registro(s) como{' '}
+                          <span className="font-semibold">{destaqueDesempenho.label.toLowerCase()}</span>
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-[#01162A]/60">
+                        Nenhum feedback registrado para este aluno ainda.
+                      </p>
+                    )}
+                    <div className="grid grid-cols-2 gap-4">
+                      {opcoesDesempenho.map((opcao) => (
+                        <div key={opcao.value} className="flex items-center gap-3">
+                          {renderDesempenhoBadges([opcao.value])}
+                          <span className="font-medium text-[#01162A]">
+                            {estatisticas[opcao.value]} registro(s)
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
               </div>
               
-              <div className="border-2 border-[#C5C5C5] rounded-3xl p-6 bg-transparent">
-                {dadosGrafico.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <LineChart data={dadosGrafico} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#C5C5C5" />
-                    <XAxis 
-                      dataKey="data" 
-                      stroke="#01162A"
-                        tick={{ fontSize: 12 }}
-                    />
-                    <YAxis 
-                      domain={[0.5, 4.5]}
-                      ticks={[1, 2, 3, 4]}
-                      tickFormatter={(value) => {
-                        const labels = ['', 'Disperso', 'Razoável', 'Atento', 'Focado']
-                        return labels[value] || ''
-                      }}
-                      stroke="#01162A"
+              <div className="border-2 border-[#C5C5C5] rounded-3xl p-5 md:p-6 bg-transparent md:col-span-3">
+                {feedbackLoading ? (
+                  <div className="h-[220px] flex items-center justify-center text-sm text-[#01162A]/60">
+                    Carregando dados do gráfico...
+                  </div>
+                ) : dadosGrafico.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={dadosGrafico} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#C5C5C5" />
+                      <XAxis dataKey="data" stroke="#01162A" tick={{ fontSize: 12 }} />
+                      <YAxis
+                        domain={[0.5, 4.5]}
+                        ticks={[1, 2, 3, 4]}
+                        tickFormatter={(value) => {
+                          const labels = ['', 'Disperso', 'Razoável', 'Atento', 'Focado']
+                          return labels[value] || ''
+                        }}
+                        stroke="#01162A"
                         tick={{ fontSize: 11 }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="valor" 
-                      stroke="#3B82C8"
-                      strokeWidth={3}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="valor"
+                        stroke="#3B82C8"
+                        strokeWidth={3}
                         dot={{ r: 5, fill: '#6BAED6', stroke: '#3B82C8', strokeWidth: 2 }}
                         activeDot={{ r: 6 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 ) : (
-                  <div className="h-[220px] flex items-center justify-center text-center text-sm text-[#01162A]/60">
+                  <div className="h-[220px] flex items-center justify-center text-center	text-sm text-[#01162A]/60">
                     Ainda não há desempenho registrado nas aulas desta turma para este aluno.
                   </div>
                 )}
@@ -605,44 +693,38 @@ export default function AlunoPage({ params }: Props) {
                           <div className="text-[#01162A]/70">{formataDataCurta(aula.data)}</div>
                       </div>
                       
-                        <div className="flex flex-wrap items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-[#01162A]/70">
-                              {desempenhoAtual.length > 0
-                                ? desempenhoAtual
-                                    .map((valor) => opcoesDesempenho.find((o) => o.value === valor)?.label)
-                                    .filter(Boolean)
-                                    .join(', ')
-                                : 'Sem desempenho registrado'}
-                          </span>
-                            {desempenhoAtual.length > 0 && (
-                          <span
-                            className="w-8 h-8 rounded-full"
-                                style={{
-                                  backgroundColor:
-                                    opcoesDesempenho.find((o) => o.value === desempenhoAtual[0])?.color ||
-                                    '#C5C5C5'
-                                }}
-                              />
+                        <div className="flex flex-wrap items-start gap-5">
+                          <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-widest text-[#01162A]/50 font-semibold">
+                              Desempenho registrado
+                            </p>
+                            {desempenhoAtual.length > 0 ? (
+                              renderDesempenhoBadges(desempenhoAtual)
+                            ) : (
+                              <p className="text-sm text-[#01162A]/60">Sem desempenho registrado</p>
                             )}
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-[#01162A]/70">
-                              {materialInfo ? materialInfo.label : 'Material não avaliado'}
-                          </span>
-                            {materialInfo && (
-                          <span
-                            className="w-6 h-6 rotate-45 rounded-sm"
-                            style={{ backgroundColor: materialInfo.color }}
-                          />
+                          </div>
+
+                          <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-widest text-[#01162A]/50 font-semibold">
+                              Avaliação do material
+                            </p>
+                            {materialInfo ? (
+                              <span
+                                className="px-3 py-1 rounded-full text-xs font-semibold text-white shadow-sm"
+                                style={{ backgroundColor: materialInfo.color }}
+                              >
+                                {materialInfo.label}
+                              </span>
+                            ) : (
+                              <p className="text-sm text-[#01162A]/60">Material não avaliado</p>
                             )}
                           </div>
                         </div>
                       </div>
 
                       {registro?.observacoes && (
-                        <div className="mt-4 rounded-2xl border border-[#EFB4C8]/60 bg-[#EFB4C8]/10 p-4 text-sm text-[#01162A]">
+                        <div className="mt-5 rounded-2xl border border-[#EFB4C8]/60 bg-[#EFB4C8]/10 p-4 text-sm text-[#01162A] leading-relaxed">
                           <span className="font-semibold block mb-2 text-[#EFB4C8]">
                             Observações do professor
                           </span>

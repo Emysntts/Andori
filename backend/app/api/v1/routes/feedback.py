@@ -1,7 +1,7 @@
 
 import json
 from json import JSONDecodeError
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -17,6 +17,7 @@ from app.schemas.feedback import (
     StudentPerformanceEntry,
     MaterialPerformanceCreate,
     MaterialPerformance,
+    StudentFeedbackParsed,
 )
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
@@ -118,7 +119,9 @@ def list_student_feedback(
     base_query += " ORDER BY id DESC LIMIT :limit OFFSET :offset"
 
     rows = db.execute(text(base_query), params).mappings().all()
-    return {"items": [dict(r) for r in rows], "limit": limit, "offset": offset}
+    material_map = _fetch_latest_materials(db, {r["id_arrmd"] for r in rows})
+    items = [_deserialize_feedback_row(dict(r), material_map).model_dump() for r in rows]
+    return {"items": items, "limit": limit, "offset": offset}
 
 
 @router.get("/student/{aluno_id}")
@@ -148,7 +151,9 @@ def list_student_feedback_by_aluno(
     base_query += " ORDER BY id DESC LIMIT :limit OFFSET :offset"
 
     rows = db.execute(text(base_query), params).mappings().all()
-    return {"items": [dict(r) for r in rows], "limit": limit, "offset": offset}
+    material_map = _fetch_latest_materials(db, {r["id_arrmd"] for r in rows})
+    items = [_deserialize_feedback_row(dict(r), material_map).model_dump() for r in rows]
+    return {"items": items, "limit": limit, "offset": offset}
 
 
 def _get_latest_material_row(db: Session, arrmd_id: UUID) -> Optional[Dict[str, Any]]:
@@ -222,6 +227,40 @@ def _load_material_performance(db: Session, arrmd_id: UUID) -> Optional[Material
         observacoes=material_row.get("observacoes"),
         alunos=alunos_entries,
     )
+
+
+def _deserialize_feedback_row(
+    row: Dict[str, Any], material_map: Dict[UUID, Dict[str, Any]]
+) -> StudentFeedbackParsed:
+    desempenho = _parse_feedback_payload(row.get("feedback"))
+    material_info = material_map.get(row["id_arrmd"])
+    return StudentFeedbackParsed(
+        id=row["id"],
+        id_arrmd=row["id_arrmd"],
+        aluno_id=row["aluno_id"],
+        feedback=row.get("feedback") or "",
+        desempenho=desempenho,
+        material_id=(material_info or {}).get("id"),
+        material_util=(material_info or {}).get("material_util"),
+        observacoes=(material_info or {}).get("observacoes"),
+    )
+
+
+def _fetch_latest_materials(db: Session, arrmd_ids: Set[UUID]) -> Dict[UUID, Dict[str, Any]]:
+    if not arrmd_ids:
+        return {}
+    rows = db.execute(
+        text(
+            """
+            SELECT DISTINCT ON (aula_id) aula_id, id, material_util, observacoes
+            FROM public.arrmd_material
+            WHERE aula_id = ANY(:ids)
+            ORDER BY aula_id, created_at DESC
+            """
+        ),
+        {"ids": list(arrmd_ids)},
+    ).mappings().all()
+    return {row["aula_id"]: dict(row) for row in rows}
 
 
 @router.get("/performance/{arrmd_id}", response_model=MaterialPerformance)

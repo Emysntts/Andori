@@ -243,39 +243,21 @@ export default function MaterialGeradoPage() {
           </div>
           <div className="flex gap-3">
             {isAccepted ? (
-              <>
-                <button
-                  className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#F4D35E] font-semibold hover:bg-[#F4D35E]/10 transition-colors disabled:opacity-50"
-                  onClick={() => setOpenFeedback(true)}
-                  disabled={savingMaterial}
-                >
-                  editar
-                </button>
-                <button
-                  className="px-6 py-3 rounded-xl border-2 border-[#EFB4C8] text-[#EFB4C8] font-semibold hover:bg-[#EFB4C8]/10 transition-colors disabled:opacity-50"
-                  onClick={handleDeleteMaterial}
-                  disabled={savingMaterial}
-                >
-                  excluir
-                </button>
-              </>
+              <button
+                className="px-6 py-3 rounded-xl bg-[#EFB4C8] text-white font-semibold hover:bg-[#DA81A5] transition-colors disabled:opacity-50"
+                onClick={handleDeleteMaterial}
+                disabled={savingMaterial}
+              >
+                excluir material
+              </button>
             ) : (
-              <>
-                <button
-                  className="px-6 py-3 rounded-xl border-2 border-[#F4D35E] text-[#F4D35E] font-semibold hover:bg-[#F4D35E]/10 transition-colors disabled:opacity-50"
-                  onClick={() => setOpenFeedback(true)}
-                  disabled={savingMaterial}
-                >
-                  Gerar Novamente
-                </button>
-                <button
-                  className="px-6 py-3 rounded-xl bg-[#6BAED6] text-white font-semibold hover:bg-[#3B82C8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={handleAcceptMaterial}
-                  disabled={savingMaterial || !sessionMaterial}
-                >
-                  {savingMaterial ? 'Salvando...' : 'Aceitar Material'}
-                </button>
-              </>
+              <button
+                className="px-6 py-3 rounded-xl bg-[#6BAED6] text-white font-semibold hover:bg-[#3B82C8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleAcceptMaterial}
+                disabled={savingMaterial || !sessionMaterial}
+              >
+                {savingMaterial ? 'Salvando...' : 'Criar material'}
+              </button>
             )}
           </div>
         </div>
